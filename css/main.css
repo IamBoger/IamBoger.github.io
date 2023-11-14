@@ -18,10 +18,10 @@
   --btn-default-hover-bg: #222;
   --btn-default-hover-color: #fff;
   --btn-default-hover-border-color: #222;
-  --highlight-background: #f9ccff;
-  --highlight-foreground: #250482;
-  --highlight-gutter-background: #e3b8f2;
-  --highlight-gutter-foreground: #3a178e;
+  --highlight-background: #22272e;
+  --highlight-foreground: #adbac7;
+  --highlight-gutter-background: #2f353d;
+  --highlight-gutter-foreground: #9fabb7;
   color-scheme: light;
 }
 html {
@@ -373,87 +373,114 @@ pre code.hljs {
 code.hljs {
   padding: 3px 5px
 }
-/*
+/*!
+  Theme: GitHub Dark Dimmed
+  Description: Dark dimmed theme as seen on github.com
+  Author: github.com
+  Maintainer: @Hirse
+  Updated: 2021-05-15
 
-Gradient Light (c) Samia Ali <samiaab1990@gmail.com>
-
+  Colors taken from GitHub's CSS
 */
 .hljs {
-  background-color: #f9ccff;
-  background-image: linear-gradient(295deg, #f9ccff 0%, #e6bbf9 11%, #9ec6f9 32%, #55e6ee 60%, #91f5d1 74%, #f9ffbf 98%);
-  color: #250482
-}
-.hljs-subtr {
-  color: #01958B
+  color: #adbac7;
+  background: #22272e
 }
 .hljs-doctag,
-.hljs-meta,
-.hljs-comment,
-.hljs-quote {
-  color: #CB7200
-}
-.hljs-selector-tag,
-.hljs-selector-id,
-.hljs-template-tag,
-.hljs-regexp,
-.hljs-attr,
-.hljs-tag {
-  color: #07BD5F
-}
-.hljs-params,
-.hljs-selector-class,
-.hljs-bullet {
-  color: #43449F
-}
 .hljs-keyword,
-.hljs-section,
 .hljs-meta .hljs-keyword,
-.hljs-symbol,
-.hljs-type {
-  color: #7D2801
+.hljs-template-tag,
+.hljs-template-variable,
+.hljs-type,
+.hljs-variable.language_ {
+  /* prettylights-syntax-keyword */
+  color: #f47067
 }
-.hljs-addition,
-.hljs-number,
-.hljs-link {
-  color: #7F0096
+.hljs-title,
+.hljs-title.class_,
+.hljs-title.class_.inherited__,
+.hljs-title.function_ {
+  /* prettylights-syntax-entity */
+  color: #dcbdfb
 }
-.hljs-string {
-  color: #2681ab
-}
+.hljs-attr,
 .hljs-attribute,
-.hljs-addition {
-  color: #296562
-}
+.hljs-literal,
+.hljs-meta,
+.hljs-number,
+.hljs-operator,
 .hljs-variable,
-.hljs-template-variable {
-  color: #025C8F
+.hljs-selector-attr,
+.hljs-selector-class,
+.hljs-selector-id {
+  /* prettylights-syntax-constant */
+  color: #6cb6ff
+}
+.hljs-regexp,
+.hljs-string,
+.hljs-meta .hljs-string {
+  /* prettylights-syntax-string */
+  color: #96d0ff
 }
 .hljs-built_in,
-.hljs-formula,
+.hljs-symbol {
+  /* prettylights-syntax-variable */
+  color: #f69d50
+}
+.hljs-comment,
+.hljs-code,
+.hljs-formula {
+  /* prettylights-syntax-comment */
+  color: #768390
+}
 .hljs-name,
-.hljs-title,
-.hljs-class,
-.hljs-function {
-  color: #529117
+.hljs-quote,
+.hljs-selector-tag,
+.hljs-selector-pseudo {
+  /* prettylights-syntax-entity-tag */
+  color: #8ddb8c
 }
-.hljs-selector-pseudo,
-.hljs-deletion,
-.hljs-literal {
-  color: #AD13FF
+.hljs-subst {
+  /* prettylights-syntax-storage-modifier-import */
+  color: #adbac7
 }
-.hljs-emphasis,
-.hljs-quote {
+.hljs-section {
+  /* prettylights-syntax-markup-heading */
+  color: #316dca;
+  font-weight: bold
+}
+.hljs-bullet {
+  /* prettylights-syntax-markup-list */
+  color: #eac55f
+}
+.hljs-emphasis {
+  /* prettylights-syntax-markup-italic */
+  color: #adbac7;
   font-style: italic
 }
-.hljs-params,
-.hljs-selector-class,
-.hljs-strong,
-.hljs-selector-tag,
-.hljs-selector-id,
-.hljs-template-tag,
-.hljs-section,
-.hljs-keyword {
+.hljs-strong {
+  /* prettylights-syntax-markup-bold */
+  color: #adbac7;
   font-weight: bold
+}
+.hljs-addition {
+  /* prettylights-syntax-markup-inserted */
+  color: #b4f1b4;
+  background-color: #1b4721
+}
+.hljs-deletion {
+  /* prettylights-syntax-markup-deleted */
+  color: #ffd8d3;
+  background-color: #78191b
+}
+.hljs-char.escape_,
+.hljs-link,
+.hljs-params,
+.hljs-property,
+.hljs-punctuation,
+.hljs-tag {
+  /* purposely ignored */
+  
 }
 code,
 kbd,
@@ -1194,6 +1221,11 @@ pre code {
   border: 1px solid #eee;
   max-width: 120px;
   padding: 2px;
+  border-radius: 50%;
+  transition: transform 1s ease-out;
+}
+.site-author-image:hover {
+  transform: rotateZ(360deg);
 }
 .site-author-name {
   color: var(--text-color);
@@ -2632,10 +2664,15 @@ header.header {
   opacity: 1;
 }
 body {
-  background-image: url("/images/kirby_background.jpeg");
-  background-repeat: no-repeat;
+  background-image: url("/images/atri.jpg");
+/* 背景图垂直、水平均居中 */
+  background-position: center center;
+/* 当内容高度大于图片高度时，背景图像的位置相对于viewport固定 */
   background-attachment: fixed;
-  background-size: 100% 100%;
+/* 让背景图基于容器大小伸缩 */
+  background-size: cover;
+/* 设置背景颜色，背景图加载过程中会显示背景色 */
+  background-color: #000;
 }
 .main-inner > .sub-menu,
 .main-inner > .post-block,
@@ -2653,16 +2690,25 @@ body {
 .posts-expand .post-meta-container {
   color: #800;
 }
-.sidebar {
-  opacity: 0.7;
+:root {
+  --opacity: 0.8;
 }
-.header-inner {
-  background: rgba(255,255,255,0.7);
+.header {
+  opacity: var(--opacity);
 }
 .popup {
-  opacity: 0.5;
+  opacity: var(--opacity);
+}
+.sidebar-inner {
+  background: rgba(255,255,255,0.8);
+}
+.header-inner {
+  background: rgba(255,255,255,0.8);
 }
 .main-inner {
   background-color: rgba(255,255,255,0);
-  padding: 0px 40px 40px 40px;
+  padding: 10px 10px 10px 10px;
+}
+.main-inner .post-block {
+  background-color: rgba(255,255,255,0.8);
 }
