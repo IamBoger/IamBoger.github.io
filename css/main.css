@@ -2624,7 +2624,7 @@ header.header {
 .csdn {
   background-image: url("/images/csdn.svg");
   background-size: 1em 1em;
-  opacity: 0.8;
+  opacity: 0.9;
   background-position: 0.05rem 0.23rem;
   background-repeat: no-repeat;
   height: 1rem;
@@ -2638,7 +2638,7 @@ header.header {
 .bilibili {
   background-image: url("/images/bilibili.svg");
   background-size: 1em 1em;
-  opacity: 0.8;
+  opacity: 0.9;
   background-position: 0.05rem 0.23rem;
   background-repeat: no-repeat;
   height: 1rem;
@@ -2652,7 +2652,7 @@ header.header {
 .douyin {
   background-image: url("/images/douyin.svg");
   background-size: 1em 1em;
-  opacity: 0.8;
+  opacity: 0.9;
   background-position: 0.05rem 0.23rem;
   background-repeat: no-repeat;
   height: 1rem;
@@ -2664,7 +2664,7 @@ header.header {
   opacity: 1;
 }
 body {
-  background-image: url("/images/atri.jpg");
+  background-image: url("/images/chiikawa1.jpg");
 /* 背景图垂直、水平均居中 */
   background-position: center center;
 /* 当内容高度大于图片高度时，背景图像的位置相对于viewport固定 */
@@ -2691,7 +2691,7 @@ body {
   color: #800;
 }
 :root {
-  --opacity: 0.8;
+  --opacity: 0.9;
 }
 .header {
   opacity: var(--opacity);
@@ -2700,15 +2700,15 @@ body {
   opacity: var(--opacity);
 }
 .sidebar-inner {
-  background: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.9);
 }
 .header-inner {
-  background: rgba(255,255,255,0.8);
+  background: rgba(255,255,255,0.9);
 }
 .main-inner {
   background-color: rgba(255,255,255,0);
   padding: 10px 10px 10px 10px;
 }
 .main-inner .post-block {
-  background-color: rgba(255,255,255,0.8);
+  background-color: rgba(255,255,255,0.9);
 }
