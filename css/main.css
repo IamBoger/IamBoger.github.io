@@ -2690,6 +2690,15 @@ body {
 .posts-expand .post-meta-container {
   color: #800;
 }
+.site-description {
+  color: #555;
+}
+.site-state-item-name {
+  color: #555;
+}
+.footer-inner {
+  color: #555;
+}
 :root {
   --opacity: 0.9;
 }
