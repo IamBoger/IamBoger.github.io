@@ -2664,7 +2664,7 @@ header.header {
   opacity: 1;
 }
 body {
-  background-image: url("/images/chiikawa1.jpg");
+  background-image: url("/images/chiikawa.jpg");
 /* 背景图垂直、水平均居中 */
   background-position: center center;
 /* 当内容高度大于图片高度时，背景图像的位置相对于viewport固定 */
