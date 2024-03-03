@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="本篇为对Java中的System类、Math类、BigInteger类、BigDecimal类的学习笔记。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java中的System类、Math类、BigInteger类、BigDecimal类">
+<meta property="og:url" content="https://iamboger.github.io/2023/12/19/17-26-28/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="本篇为对Java中的System类、Math类、BigInteger类、BigDecimal类的学习笔记。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/e2f2b6396be74a949adf992383ca7d6c.png">
+<meta property="article:published_time" content="2023-12-19T09:26:28.000Z">
+<meta property="article:modified_time" content="2023-12-19T09:28:55.099Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/e2f2b6396be74a949adf992383ca7d6c.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2023/12/19/17-26-28/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2023/12/19/17-26-28/","path":"2023/12/19/17-26-28/","title":"Java中的System类、Math类、BigInteger类、BigDecimal类"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java中的System类、Math类、BigInteger类、BigDecimal类 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#System%E7%B1%BB"><span class="nav-number">1.</span> <span class="nav-text">System类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Math%E7%B1%BB"><span class="nav-number">2.</span> <span class="nav-text">Math类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#BigInteger%E7%B1%BB"><span class="nav-number">3.</span> <span class="nav-text">BigInteger类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#BigDecimal%E7%B1%BB"><span class="nav-number">4.</span> <span class="nav-text">BigDecimal类</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2023/12/19/17-26-28/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java中的System类、Math类、BigInteger类、BigDecimal类 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java中的System类、Math类、BigInteger类、BigDecimal类
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2023-12-19 17:26:28 / Modified: 17:28:55" itemprop="dateCreated datePublished" datetime="2023-12-19T17:26:28+08:00">2023-12-19</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/JavaSE/" itemprop="url" rel="index"><span itemprop="name">JavaSE</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本篇为对Java中的System类、Math类、BigInteger类、BigDecimal类的学习笔记。</p>
+<span id="more"></span>
+
+<h1 id="System类"><a href="#System类" class="headerlink" title="System类"></a>System类</h1><ul>
+<li>System类代表系统，系统级的很多属性和控制方法都放置在该类的内部。该类位于java.lang包</li>
+<li>由于该类的构造器是private的，所以无法创建该类的对象，也就是无法实例化该类。其内部的成员变量和成员方法都是static的，所以也可以很方便的进行调用。</li>
+<li>成员变量<ul>
+<li>System类内部包含in、out和err三个成员变量，分别代表标准输入流(键盘输入)，标准输出流(显示器)和标准错误输出流(显示器)</li>
+</ul>
+</li>
+<li>成员方法<ul>
+<li>native long currentTimeMillis(): 该方法的作用是返回当前的计算机时间，时间的表达格式为当前计算机时间和GMT时间(格林威治时间)1970年1月1号O时0分0秒所差的毫秒数。</li>
+<li>void exit(int status): 该方法的作用是退出程序。其中status的值为0代表正常退出，非零代表异常退出。<strong>使用该方法可以在图形界面编程中实现程序的退出功能</strong>等。</li>
+<li>void gc(): 该方法的作用是请求系统进行垃圾回收。至于系统是否立刻回收，则取决于系统中垃圾回收算法的实现以及系统执行时的情况。</li>
+<li>String getProperty(String key): 该方法的作用是获得系统中属性名为key的属性对应的值。系统中常见的属性名以及属性的作用如下表所示:<br><img src="/images/illustration/e2f2b6396be74a949adf992383ca7d6c.png" alt="在这里插入图片描述"><br>示例：</li>
+</ul>
+</li>
+</ul>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br><span class="line">26</span><br><span class="line">27</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.junit.Test;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Sample</span> &#123;</span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">test</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">String</span> <span class="variable">javaVersion</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;java.version&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;java的version: &quot;</span> + javaVersion);<span class="comment">//java的version: 14.0.2</span></span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">javaHome</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;java.home&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;java的home:&quot;</span> + javaHome);<span class="comment">//java的home:D:\software\Java\JDK-14</span></span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">osName</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;os.name&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;os的name:&quot;</span> + osName);<span class="comment">//os的name:Windows 10</span></span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">osVersion</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;os.version&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;os的version: &quot;</span> + osVersion);<span class="comment">//os的version: 10.0</span></span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">userName</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;user.name&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;user的name: &quot;</span> + userName);<span class="comment">//user的name: 11496</span></span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">userHome</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;user.home&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;user的home: &quot;</span> + userHome);<span class="comment">//user的home: C:\Users\11496</span></span><br><span class="line"></span><br><span class="line">        <span class="type">String</span> <span class="variable">userDir</span> <span class="operator">=</span> System.getProperty(<span class="string">&quot;user.dir&quot;</span>);</span><br><span class="line">        System.out.println(<span class="string">&quot;user的dir: &quot;</span> + userDir);<span class="comment">//user的dir: D:\桌面文件夹\项目\test\java</span></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<h1 id="Math类"><a href="#Math类" class="headerlink" title="Math类"></a>Math类</h1><p>java.lang.Math提供了一系列静态方法用于科学计算。其方法的参数和返回值类型一般为double型</p>
+<ul>
+<li>abs 绝对值</li>
+<li>acos,asin,atan,cos,sin,tan 三角函数</li>
+<li>sqrt 平方根</li>
+<li>pow(double a,doble b) a的b次幂</li>
+<li>log 自然对数</li>
+<li>exp e为底指数</li>
+<li>max(double a,double b)</li>
+<li>min(double a,double b)</li>
+<li>random() 返回0.0到1.0的随机数</li>
+<li>long round(double a) double型数据a转换为long型（四舍五入)</li>
+<li>toDegrees(double angrad) 弧度 → 角度</li>
+<li>toRadians(double angdeg) 角度 → 弧度</li>
+</ul>
+<h1 id="BigInteger类"><a href="#BigInteger类" class="headerlink" title="BigInteger类"></a>BigInteger类</h1><ul>
+<li>Integer类作为int的包装类，能存储的最大整型值为231 - 1，Long类也是有限的，最大为263 - 1。如果要表示再大的整数，不管是基本数据类型还是他们的包装类都无能为力，更不用说进行运算了。</li>
+<li>java.math包的<strong>Biglnteger可以表示不可变的任意精度的整数</strong>。BigInteger提供所有Java的基本整数操作符的对应物，并提供java.lang.Math的所有相关方法。另外，BigInteger还提供以下运算: 模算术、GCD计算、质数测试、素数生成、位操作以及一些其他操作。</li>
+<li>构造器：<ul>
+<li>Biglnteger(String val): 根据字符串构建Biglnteger对象</li>
+</ul>
+</li>
+<li>常用方法：<ul>
+<li>public Biglnteger abs(): 返回此 Biglnteger的绝对值的 Biglnteger。</li>
+<li>BigInteger add(BigInteger val): 返回其值为(this + val)的 Biglnteger</li>
+<li>Biglnteger subtract(BigInteger val): 返回其值为(this - val)的 BigInteger</li>
+<li>Biglnteger multiply(BigInteger val): 返回其值为(this * val)的 BigInteger</li>
+<li>BigInteger divide(BigInteger val): 返回其值为(this &#x2F; val)的 BigInteger。整数相除只保留整数部分。</li>
+<li>BigInteger remainder(BigInteger val): 返回其值为(this % val)的 BigInteger</li>
+<li>BigInteger[] divideAndRemainder(BigInteger val): 返回包含(this &#x2F; val)后跟(this % val)的两个Biglnteger的数组。</li>
+<li>BigInteger pow(int exponent): 返回其值为(thisexponent)的 BigInteger。</li>
+</ul>
+</li>
+</ul>
+<h1 id="BigDecimal类"><a href="#BigDecimal类" class="headerlink" title="BigDecimal类"></a>BigDecimal类</h1><ul>
+<li>一般的Float类和Double类可以用来做科学计算或工程计算，但在<strong>商业计算中，要求数字精度比较高，故用到java.math.BigDecimal类。</strong></li>
+<li>BigDecimal类支持不可变的、任意精度的有符号十进制定点数。</li>
+<li>构造器<ul>
+<li>public BigDecimal(double val)</li>
+<li>public BigDecimal(String val)</li>
+</ul>
+</li>
+<li>常用方法<ul>
+<li>public BigDecimal add(BigDecimal augend)</li>
+<li>public BigDecimal subtract(BigDecimal subtrahend)</li>
+<li>public BigDecimal multiply(BigDecimal multiplicand)</li>
+<li>public BigDecimal divide(BigDecimal divisor, int scale, int roundingMode)</li>
+</ul>
+</li>
+</ul>
+<p>示例代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">import</span> org.junit.Test;</span><br><span class="line"></span><br><span class="line"><span class="keyword">import</span> java.math.BigDecimal;</span><br><span class="line"><span class="keyword">import</span> java.math.BigInteger;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Sample</span> &#123;</span><br><span class="line">    <span class="meta">@Test</span></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">test</span><span class="params">()</span> &#123;</span><br><span class="line">        <span class="type">BigInteger</span> <span class="variable">bi</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BigInteger</span>(<span class="string">&quot;12433241123&quot;</span>);</span><br><span class="line">        <span class="type">BigDecimal</span> <span class="variable">bd</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BigDecimal</span>(<span class="string">&quot;12435.351&quot;</span>);</span><br><span class="line">        <span class="type">BigDecimal</span> <span class="variable">bd2</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">BigDecimal</span>(<span class="string">&quot;11&quot;</span>);</span><br><span class="line">        System.out.println(bi);</span><br><span class="line">        <span class="comment">//System.out.println(bd.divide(bd2)); 报错，因为没有指定保留位数，且除不尽</span></span><br><span class="line">        System.out.println(bd.divide(bd2, BigDecimal.ROUND_HALF_UP));</span><br><span class="line">        <span class="comment">//15表示保留15位小数</span></span><br><span class="line">        System.out.println(bd.divide(bd2, <span class="number">15</span>, BigDecimal.ROUND_HALF_UP));</span><br><span class="line"></span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2023/12/19/17-26-28/" title="Java中的System类、Math类、BigInteger类、BigDecimal类">https://iamboger.github.io/2023/12/19/17-26-28/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2023/12/19/11-57-05/" rel="prev" title="Java中的比较器">
+                  <i class="fa fa-angle-left"></i> Java中的比较器
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2023/12/19/17-29-15/" rel="next" title="Java中的枚举类">
+                  Java中的枚举类 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

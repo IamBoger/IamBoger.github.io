@@ -1,0 +1,455 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="本篇文章为Java并发系列博客中的第一篇，主要讲述Java中的锁机制、悲观锁以及乐观锁。 线程模型了解Java中的线程模型前推荐先了解JVM中的内存模型（JMM），推荐阅读我写的这篇文章《JVM 内存模型》。 JVM线程与操作系统线程之间存在着某种映射关系，这两种不同维度的线程之间的规范和协议，就是线程模型。 JVM线程对不同操作系统上的原生线程进行了高级抽象，使开发者在大多数情况下可以不用关注下">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java并发（一）锁机制、悲观锁、乐观锁">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/03/20-58-53/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="本篇文章为Java并发系列博客中的第一篇，主要讲述Java中的锁机制、悲观锁以及乐观锁。 线程模型了解Java中的线程模型前推荐先了解JVM中的内存模型（JMM），推荐阅读我写的这篇文章《JVM 内存模型》。 JVM线程与操作系统线程之间存在着某种映射关系，这两种不同维度的线程之间的规范和协议，就是线程模型。 JVM线程对不同操作系统上的原生线程进行了高级抽象，使开发者在大多数情况下可以不用关注下">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/131cd94aa83e47f09dbb56956d5f73c4.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/be952d71cf0f43f3b779089d83c27883.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/4ac2755055a74b6a97f5b803d4bf5088.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/a0c7c956570a46d993a936e4bcb97cf8.png">
+<meta property="article:published_time" content="2024-03-03T12:58:53.000Z">
+<meta property="article:modified_time" content="2024-03-03T13:19:55.730Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/131cd94aa83e47f09dbb56956d5f73c4.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/03/20-58-53/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/03/20-58-53/","path":"2024/03/03/20-58-53/","title":"Java并发（一）锁机制、悲观锁、乐观锁"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java并发（一）锁机制、悲观锁、乐观锁 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.</span> <span class="nav-text">线程模型</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Java%E9%94%81%E6%9C%BA%E5%88%B6"><span class="nav-number">2.</span> <span class="nav-text">Java锁机制</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8EObject%E7%9A%84%E6%82%B2%E8%A7%82%E9%94%81"><span class="nav-number">3.</span> <span class="nav-text">基于Object的悲观锁</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#synchronized%E5%85%B3%E9%94%AE%E5%AD%97"><span class="nav-number">4.</span> <span class="nav-text">synchronized关键字</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9F%BA%E4%BA%8ECAS%E7%9A%84%E4%B9%90%E8%A7%82%E9%94%81"><span class="nav-number">5.</span> <span class="nav-text">基于CAS的乐观锁</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">14</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/03/20-58-53/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java并发（一）锁机制、悲观锁、乐观锁 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java并发（一）锁机制、悲观锁、乐观锁
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2024-03-03 20:58:53 / Modified: 21:19:55" itemprop="dateCreated datePublished" datetime="2024-03-03T20:58:53+08:00">2024-03-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/Java%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">Java并发</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本篇文章为Java并发系列博客中的第一篇，主要讲述Java中的锁机制、悲观锁以及乐观锁。</p>
+<h1 id="线程模型"><a href="#线程模型" class="headerlink" title="线程模型"></a>线程模型</h1><p>了解Java中的线程模型前推荐先了解JVM中的内存模型（JMM），推荐阅读我写的这篇文章<a target="_blank" rel="noopener" href="https://blog.csdn.net/QQ1149646297/article/details/123310967">《JVM 内存模型》</a>。</p>
+<p>JVM线程与操作系统线程之间存在着某种映射关系，这两种不同维度的线程之间的规范和协议，就是线程模型。</p>
+<p>JVM线程对不同操作系统上的原生线程进行了<strong>高级抽象</strong>，使开发者在大多数情况下可以不用关注下层细节，而只要专注于上层开发。</p>
+<p>&nbsp; <span id="more"></span></p>
+<h1 id="Java锁机制"><a href="#Java锁机制" class="headerlink" title="Java锁机制"></a>Java锁机制</h1><p>JVM内存结构由五部分组成：程序计数器、虚拟机栈、本地方法栈、堆、方法区。</p>
+<p>其中，堆、方法区的数据是线程共享的。当多个线程竞争同一些数据时，容易产生异常情况。Java中的锁就是用于解决这个问题。</p>
+<p>Java中的锁存在两种实现方式：</p>
+<ol>
+<li>基于对象的<strong>悲观锁</strong></li>
+<li>基于CAS的<strong>乐观锁</strong></li>
+</ol>
+<p>&nbsp; </p>
+<h1 id="基于Object的悲观锁"><a href="#基于Object的悲观锁" class="headerlink" title="基于Object的悲观锁"></a>基于Object的悲观锁</h1><p>在Java中，每个对象都拥有一把锁，这把锁存储在对象头中，用于记录当前对象被哪个线程占用。</p>
+<p>Java对象分为三个部分：</p>
+<ul>
+<li>对象头（下面细讲）</li>
+<li>实例数据（对象中的属性、状态等的值）</li>
+<li>对齐填充字节（该设计用于满足”Java对象大小是8字节倍数“的条件）</li>
+</ul>
+<p>对象头一般设计得很小，其中包含两部分：</p>
+<ul>
+<li>Mark Word</li>
+<li>Class Pointer</li>
+</ul>
+<p>Class Pointer顾名思义是个指针，指向当前对象类型所在方法区中的类的信息<br>Mark Word存储了很多关于当前对象的运行时状态信息，如HashCode、锁状态标志、指向锁记录的指针、偏向线程ID、锁标志位等等。</p>
+<p>关于Mark Word中的信息可以参考下图：<br><img src="/images/illustration/131cd94aa83e47f09dbb56956d5f73c4.png" alt="在这里插入图片描述"><br>在上表中的锁标志位当中，分别对应 <strong>无锁</strong>、<strong>偏向锁</strong>、<strong>轻量级锁</strong>、<strong>重量级锁</strong>、<strong>GC标记</strong> 五种状态。</p>
+<p>在Java中，启用对象锁的方式是通过使用<code>synchronized</code>关键字来进行的。</p>
+<h1 id="synchronized关键字"><a href="#synchronized关键字" class="headerlink" title="synchronized关键字"></a>synchronized关键字</h1><p>synchronized关键字可以用于同步线程。synchronized被编译后会生成 <strong>monitorenter</strong> 和 <strong>monitorexit</strong> 两个字节码指令。</p>
+<p>Monitor，即监视器。一个线程进入Monitor时，其它线程如果也想进入Monitor，只能等待直到Monitor中的线程退出才能进入。</p>
+<p>这也即是synchronized关键字实现同步机制的方式，但是这种方式存在性能问题，因为Monitor的下层是通过操作系统中的Mutex Lock（互斥锁）来实现的，这其中线程的挂起和唤醒这两个操作进行了两次<strong>上下文切换</strong>，因此这种方式会涉及到大量的<strong>上下文切换</strong>，消耗大量CPU，影响性能。</p>
+<p>什么是上下文切换？</p>
+<blockquote>
+<p>线程多，不断阻塞、唤醒：一次阻塞+唤醒操作需要两次上下文切换，就是第一次由用户态切换到内核态，由内核将线程阻塞掉，将线程数据原本在寄存器或者cache运送到内存或队列中，第二次由用户态切换到内核态，由内核将线程唤醒，将线程数据从内存或者队列送到寄存器或cache中。如果频繁进行上下文切换，CPU就大多数消耗在内核数据共享中，影响了真正工作线程功能。</p>
+<p>上下文切换过高会导致CPU像个搬运工，频繁在寄存器和运行队列之间奔波，更多的时间花在了线程切换，而不是真正工作的线程上。直接的消耗包括CPU寄存器需要保存和加载，系统调度器的代码需要执行。间接消耗在于多核cache之间的共享数据。</p>
+</blockquote>
+<p>因此在JDK1.6之后，synchronized进行了优化，引入了 “偏向锁”、“轻量级锁” 的概念。</p>
+<p>下面我们讨论一下 <strong>无锁</strong>、<strong>偏向锁</strong>、<strong>轻量级锁</strong>、<strong>重量级锁</strong> 四种状态。</p>
+<p>&nbsp;<br><strong>无锁：</strong></p>
+<p>无锁顾名思义就是不对资源进行操作系统级别（Mutex Lock）的锁定。</p>
+<p>两种情况下适合使用无锁：</p>
+<ol>
+<li>资源在多线程环境下不会出现线程竞争的情况</li>
+<li>资源会被竞争，但是可以使用CAS等函数级别的锁来进行控制同步</li>
+</ol>
+<p>&nbsp;<br><strong>偏向锁：</strong></p>
+<p>当给对象加锁后，实际上却只有一个线程会获取这个对象锁时，我们希望只在用户态来实现同步控制，那么我们可以让对象锁认识这个线程，每次遇到这个线程时就把锁交出去，所以可以理解为偏爱这个线程，即“偏向锁”。</p>
+<p>偏向锁的实现是通过用Mark Word中来记录“所偏爱”线程的ID。</p>
+<p>当对象发现当前不止一个线程在竞争锁时，偏向锁会升级为轻量级锁。</p>
+<p>&nbsp;<br><strong>轻量级锁：</strong></p>
+<p>当偏向锁升级为轻量级锁时，Mark Word中记录的不再是线程ID，而是一个指向虚拟机栈中锁记录的指针。</p>
+<p>当一个线程尝试获得锁并发现该锁是轻量级锁时，会在自己的虚拟机栈中开辟一块叫“锁记录”的空间，该锁记录中记录着锁对象的Mark Word以及一个Owner指针，Owner指针用于指向该锁对象，同时锁对象的Mark Word中也会生成一个指针指向该线程虚拟机栈中的锁记录。</p>
+<p>也即是说，锁对象有一个指针指向该线程记录中的锁记录，线程的锁记录中也有一个记录指向该锁对象（同时存储锁对象之前的Mark Word），那么它们就互相意识到对方的存在。</p>
+<p>当其它线程想来获取该锁对象但发现该锁对象正在被占用时，会<strong>自旋</strong>等待。自旋就是对象会在一个循环中不断尝试获取锁对象，这个过程是不需要操作系统来挂起和阻塞的，效率相对较高。但与此同时，自旋也相当于CPU在空转，当有过多的线程同时进行自旋，也会浪费CPU资源。</p>
+<p>所以当自旋等待的线程超过1个时，轻量级锁就会升级为重量级锁。</p>
+<p>&nbsp;<br><strong>重量级锁：</strong></p>
+<p>重量级锁就是使用Monitor来对线程进行同步控制的，对线程的控制也最严格，且同步机制上文也有简要介绍，这个过程会涉及上下文切换，性能消耗相对较大。</p>
+<p>&nbsp;<br><strong>锁升级：</strong></p>
+<p>锁升级其实就是上文所提到的锁升级的一个过程：<br>无锁 → 偏向锁 → 轻量级锁 → 重量级锁</p>
+<ol>
+<li>当只有一个线程需要占用资源时，其实锁对象使用偏向锁</li>
+<li>当有两个需要抢占资源时，偏向锁升级为轻量级锁</li>
+<li>当多于一个线程在自旋等待时，轻量级锁升级为重量级锁</li>
+</ol>
+<p>&nbsp;<br><strong>锁消除：</strong></p>
+<p>即时编译器（JIT编译器）在进行动态编译代码时，会使用一种叫<strong>逃逸分析</strong>的技术，判断程序中的锁对象是否只被一个线程使用，如果是，JIT编译器在编译这个同步代码时就不会生成synchronized关键字来标识锁申请与释放的机器码，从而实现了锁的消除，已提高性能。</p>
+<p>如以下代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="type">StringBuffer</span> <span class="variable">stringBuffer</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">StringBuffer</span>();</span><br><span class="line">stringBuffer.append(<span class="string">&quot;a&quot;</span>);</span><br><span class="line">stringBuffer.append(<span class="string">&quot;b&quot;</span>);</span><br></pre></td></tr></table></figure>
+
+<p>StringBuffer使用的是同步方法，但是这里这个同步方法只会被一个线程使用，那么JIT编译器会进行优化，消除了锁。</p>
+<p>&nbsp;<br><strong>锁粗化：</strong></p>
+<p>当JIT编译器在动态编译时，如果发现前后相邻的synchronized代码块使用的是同一个锁对象，那么它会把这多个同步块合并为一个大的同步块，这样当线程在执行这些代码时，就无需频繁申请和释放锁了，进而提高性能。</p>
+<p>例如有以下代码块：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">synchronized</span> (<span class="built_in">this</span>) &#123;</span><br><span class="line">    i++;</span><br><span class="line">&#125;</span><br><span class="line"><span class="keyword">synchronized</span> (<span class="built_in">this</span>) &#123;</span><br><span class="line">    i++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>那么在JIT编译器进行优化后，会等效于以下代码块：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">synchronized</span>（<span class="built_in">this</span>）&#123;</span><br><span class="line">   	i++;</span><br><span class="line">   	i++;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>&nbsp; </p>
+<h1 id="基于CAS的乐观锁"><a href="#基于CAS的乐观锁" class="headerlink" title="基于CAS的乐观锁"></a>基于CAS的乐观锁</h1><p>什么是乐观锁？乐观锁与悲观锁的区别是什么？</p>
+<p>在这里我们需要先讨论一下为什么分别说它们是乐观的还是悲观的。</p>
+<p>悲观锁中的悲观，是说操作系统会悲观地认为，如果不进行严格的线程同步，就会出现异常，所以操作系统会使用互斥锁的同步方式来锁定资源，让资源只供一个线程使用，阻塞其他线程。</p>
+<p>乐观锁中的乐观，是说线程每次去拿共享资源的数据时，都认为别人不会修改这个共享资源的值，所以不需要进行上锁。当线程发现共享资源正在被占用时，也会反复去尝试获取这个共享资源。当线程更新共享资源数据时，会判断此期间是否有其它资源更新了这个数据，这时可以使用版本号等机制（用于解决ABA问题，下面会提到）。</p>
+<p><strong>CAS算法：</strong></p>
+<p>Java的<strong>Unsafe类</strong>中有一个<strong>native方法</strong>叫<strong>compareAndSwap</strong>，简称也即是<strong>CAS</strong>方法，用于实现CAS算法。</p>
+<p>CAS的应用场景：</p>
+<ol>
+<li>JUC包中Atomic原子类的实现</li>
+<li>实现多线程对共享资源竞争的互斥性质，比如AQS、ConcurrentHashMap、ConcurrentLinkedQueue</li>
+</ol>
+<p>利用CAS算法，我们就可以实现乐观锁的机制。关于CAS，可以通过一个例子来理解：</p>
+<p>假设现在有一个更衣室，更衣室一次只允许一个人使用，更衣室门前有个牌子，当牌子内容是0时，意味着更衣室内没人；当牌子内容是1时，意味着更衣室内有人。</p>
+<p>当有人想尝试使用这个更衣室时，会先看牌子上的内容是否为0，如果是，那么他会将牌子上的内容更改为1，然后进入更衣室；如果不是，那么他也不会放弃，会不断过来看牌子上的内容更改为0了没（期间他也可以去做其他事情）。</p>
+<p>在以上例子中，更衣室即代表共享资源，牌子就是一把乐观锁，人就是线程。</p>
+<p>设A、B两个线程同时打算将一个共享资源的值由0修改为1，它们最先都会乐观地认为当前资源是没有人进行占用，于是它们会各自生成两个值：</p>
+<ul>
+<li>旧值，即之前读到的资源的值，在这里为0</li>
+<li>新值，即计划中资源修改后的值，在这里为1</li>
+</ul>
+<p>A、B线程会抢着去修改共享资源的值，在修改资源之前，会将当前资源的值与旧值比较，如果是一致，则认为共享资源没有被修改过（注意这里，与下面的ABA问题有关），此时将值修改为1；如果当前资源的值与旧值不一致，则说明当前共享资源已经被修改过了，那么它会放弃当前的修改操作，同时不断重新尝试进行。</p>
+<p>但是在这里我们不难发现一个问题，就是当A、B线程在将共享资源的值与旧值比较发现一致后，如果在将共享资源的值修改为新值之前，有其它线程进行了值的修改，这时候就出现了异常的情况。所以，“比较数值是否一致并修改数值” 这两个动作需要同时进行，也就是说，<strong>CAS的操作必须是原子性的</strong>。现在各种不同架构的CPU都提供了指令级的CAS原子操作，只需上层直接进行调用即可。</p>
+<p><strong>ABA问题：</strong></p>
+<p>ABA问题其实很好理解，上面提到，线程在修改资源之前，会将当前资源的值与旧值比较，如果是一致，则认为共享资源没有被修改过。但是事实上存在一种情况，就是其实这个共享资源是被修改过的，只是修改后的值与当前线程修改资源前的值相同。</p>
+<p>打个比方，小明打算去便利店买瓶无糖可乐，他出门前看了下银行卡余额，此时是有10块钱。然后他出门走到了便利店拿了瓶无糖可乐，在付款之前，他确认了自己的银行卡余额，依然是10块钱，于是他认为他的银行卡余额没有变化过，于是放心地付了钱。<br>但其实在这个过程中，其实发生了两件事，一件是小明的女朋友使用了小明银行卡的代付消费了5块钱，另一件是小明的好哥们向小明的银行卡转账了之前向小明借的5块钱。</p>
+<p>当我们不在乎共享数据是否被修改过时，也即ABA问题不会对我们的结果产生什么不良影响时，我们可以不去关心ABA问题。</p>
+<p>那什么时候ABA问题会产生不良影响？</p>
+<p>假设并发线程1打算对一个栈进行操作。在操作之前的栈是这样的：<br><img src="/images/illustration/be952d71cf0f43f3b779089d83c27883.png" alt="在这里插入图片描述"><br>并发线程1在操作前了解到此时栈顶元素是A1，然后开始进行它的操作，并打算之后将栈顶元素A1修改为A2。</p>
+<p>在并发线程1操作期间，栈发生了三次出栈操作，此时栈变为只有两个元素。此时并发线程1进行完了它的操作，并对栈顶元素进行判断是否是A1，来判断栈是否被其它线程修改过。<br><img src="/images/illustration/4ac2755055a74b6a97f5b803d4bf5088.png" alt="在这里插入图片描述"><br>这时候栈顶元素仍然是A1，于是并发线程1认为栈没有被其它线程修改过，于是它将A1修改为了A2：<br><img src="/images/illustration/a0c7c956570a46d993a936e4bcb97cf8.png" alt="在这里插入图片描述"></p>
+<p>但其实此时的A1并非之前的A1，所以就产生了ABA问题！</p>
+<p>如果我们介意ABA问题的出现，那么我们就应该使用带版本号的CAS算法来实现乐观锁机制。</p>
+<p>带版本号的CAS算法对原本的CAS算法进行了优化：<br>共享资源的数据带有一个版本号，当每一次数据被修改时，版本号会迭加。<br>CAS在修改数据之前不能只比对共享资源的值，还需要确保当前数据的版本号不变！<br>如果共享资源的值相同，但版本号发生了变化，此时也不应该进行共享资源值的修改。</p>
+<hr>
+<p>之前关于Java并发的学习之后总是忘了部分内容，每次都需要重新去看资料。于是今天我做了这篇笔记，用于记录自己对Java并发的学习。</p>
+<p>我的Java并发系列另外还包含AQS、Reentranlock、volatile、ThreadLocal、线程池等内容，欢迎大家继续观看。</p>
+<hr>
+<p>参考：</p>
+<ol>
+<li>B站up主 <strong>寒食君</strong>关于java并发系列的视频</li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/wufaliang003/article/details/78797203">参考文章1</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_41055045/article/details/102646117">参考文章2</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/03/20-58-53/" title="Java并发（一）锁机制、悲观锁、乐观锁">https://iamboger.github.io/2024/03/03/20-58-53/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2023/12/19/17-29-15/" rel="prev" title="Java中的枚举类">
+                  <i class="fa fa-angle-left"></i> Java中的枚举类
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
