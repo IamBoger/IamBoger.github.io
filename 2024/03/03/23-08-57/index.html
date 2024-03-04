@@ -1,0 +1,527 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="Java中最著名的并发包是JUC (java.util.concurrent)，用于更好地让java支持高并发的任务。 在本篇文章中，将会谈到JUC中的核心组件AQS，以及基于AQS的Reentrantlock。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java并发（二）AQS、Reentrantlock">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/03/23-08-57/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="Java中最著名的并发包是JUC (java.util.concurrent)，用于更好地让java支持高并发的任务。 在本篇文章中，将会谈到JUC中的核心组件AQS，以及基于AQS的Reentrantlock。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/882a120b7b68470fb68baa95027c58cd.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/5c89406ea36045e5ac4c9d2a64ecfb41.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/61e555cad39649e0855a55917a3bbd87.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/0db8311530714b0884212558e65d34bb.png">
+<meta property="article:published_time" content="2024-03-03T15:08:57.000Z">
+<meta property="article:modified_time" content="2024-03-03T17:14:18.489Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/882a120b7b68470fb68baa95027c58cd.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/03/23-08-57/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/03/23-08-57/","path":"2024/03/03/23-08-57/","title":"Java并发（二）AQS、Reentrantlock"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java并发（二）AQS、Reentrantlock | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#AQS"><span class="nav-number">1.</span> <span class="nav-text">AQS</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B0%86AQS%E4%BD%9C%E4%B8%BA%E4%BA%92%E6%96%A5%E9%94%81%E6%97%B6%E9%9C%80%E8%A6%81%E8%A7%A3%E5%86%B3%E7%9A%84%E4%B8%89%E4%B8%AA%E6%A0%B8%E5%BF%83%E9%97%AE%E9%A2%98"><span class="nav-number">1.1.</span> <span class="nav-text">将AQS作为互斥锁时需要解决的三个核心问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%88%90%E5%91%98%E5%B1%9E%E6%80%A7-state"><span class="nav-number">1.2.</span> <span class="nav-text">成员属性 - state</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E9%83%A8%E7%B1%BB-Node"><span class="nav-number">1.3.</span> <span class="nav-text">内部类 - Node</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95-tryAcquire-%E5%92%8C-acquire"><span class="nav-number">1.4.</span> <span class="nav-text">方法 - tryAcquire 和 acquire</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%90%8C%E6%AD%A5%E7%AD%89%E5%BE%85%E9%98%9F%E5%88%97%E4%B8%8E%E6%9D%A1%E4%BB%B6%E9%98%9F%E5%88%97"><span class="nav-number">1.5.</span> <span class="nav-text">同步等待队列与条件队列</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Semaphore"><span class="nav-number">1.6.</span> <span class="nav-text">Semaphore</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CountDownLatch"><span class="nav-number">1.7.</span> <span class="nav-text">CountDownLatch</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CyclicBarrier"><span class="nav-number">1.8.</span> <span class="nav-text">CyclicBarrier</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#Reentrantlock"><span class="nav-number">2.</span> <span class="nav-text">Reentrantlock</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%88%90%E5%91%98%E5%B1%9E%E6%80%A7-sync"><span class="nav-number">2.1.</span> <span class="nav-text">成员属性 - sync</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E9%83%A8%E7%B1%BB-Sync"><span class="nav-number">2.2.</span> <span class="nav-text">内部类 - Sync</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E9%83%A8%E7%B1%BB-NonfairSync"><span class="nav-number">2.3.</span> <span class="nav-text">内部类 - NonfairSync</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%86%85%E9%83%A8%E7%B1%BB-FairSync"><span class="nav-number">2.4.</span> <span class="nav-text">内部类 - FairSync</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95-lockInterruptibly"><span class="nav-number">2.5.</span> <span class="nav-text">方法 - lockInterruptibly</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95-tryLock"><span class="nav-number">2.6.</span> <span class="nav-text">方法 - tryLock</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%AF%94%E8%BE%83synchronized%E5%92%8CReentrantlock"><span class="nav-number">2.7.</span> <span class="nav-text">比较synchronized和Reentrantlock</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ReentrantReadWriteLock"><span class="nav-number">2.8.</span> <span class="nav-text">ReentrantReadWriteLock</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/03/23-08-57/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java并发（二）AQS、Reentrantlock | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java并发（二）AQS、Reentrantlock
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2024-03-03 23:08:57" itemprop="dateCreated datePublished" datetime="2024-03-03T23:08:57+08:00">2024-03-03</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2024-03-04 01:14:18" itemprop="dateModified" datetime="2024-03-04T01:14:18+08:00">2024-03-04</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/Java%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">Java并发</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>Java中最著名的并发包是<strong>JUC</strong> (java.util.concurrent)，用于更好地让java支持高并发的任务。</p>
+<p>在本篇文章中，将会谈到JUC中的核心组件AQS，以及基于AQS的Reentrantlock。</p>
+<span id="more"></span>
+
+
+<h1 id="AQS"><a href="#AQS" class="headerlink" title="AQS"></a>AQS</h1><p>AbstractQueueSynchronizer（AQS）：</p>
+<ul>
+<li><strong>Abstract</strong>：AQS是一个抽象类，可被继承复用</li>
+<li><strong>Queue</strong>：AQS内部存在一个竞争资源的线程的排队队列（CLH同步队列，<em>Craig,Landin,and Hagersten Lock Queue</em>）</li>
+<li><strong>Synchronizer</strong>：AQS是用来对共享资源和线程进行同步管理的同步器</li>
+</ul>
+<p>在本Java并发系列上一篇文章（<a href="https://iamboger.github.io/2024/03/03/20-58-53/">Java并发（一）锁机制、悲观锁、乐观锁</a>）中讲述了什么是乐观锁以及用于实现乐观锁的CAS算法。AQS是对CAS的一种封装和丰富，也是JUC包中多个组件的底层实现，如Reentrantlock、CountDownLatch都是用到了AQS。</p>
+<p>AQS引入了独占锁、共享锁两种机制。</p>
+<ul>
+<li>独占锁：同一时刻仅允许一个线程访问共享资源（如Reentrantlock）</li>
+<li>共享锁：也称为读锁，同一时刻允许多个线程访问共享内存（如CountDownLatch、Semaphore）</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="将AQS作为互斥锁时需要解决的三个核心问题"><a href="#将AQS作为互斥锁时需要解决的三个核心问题" class="headerlink" title="将AQS作为互斥锁时需要解决的三个核心问题"></a>将AQS作为互斥锁时需要解决的三个核心问题</h2><ol>
+<li><strong>互斥变量的设计以及多线程同时更新互斥变量时线程的安全性</strong><br>使用state值记录锁竞争的状态。state值为0表示当前没有任何线程竞争锁，大于等于1则表示已经有线程正在持有锁资源。<br>一个线程来尝试获取锁之前会先判断state是否等于0，如果是，则把state更新为1并占用锁。如果此时多个线程同时做这个操作，则会存在线程安全的问题，因此AQS使用CAS机制来保证state互斥变量更新的原子性。</li>
+<li><strong>未竞争到锁的线程的等待以及竞争到锁的线程释放锁之后的唤醒</strong><br>未竞争到锁的资源会通过Unsafe类中的park方法进行阻塞，把阻塞的线程按照先进先出的原则加入到双向链表的排队队列中。当获得锁的线程释放锁后，会从排队队列中唤醒下一个等待中的线程。</li>
+<li><strong>锁竞争的公平性和非公平性</strong><br>关于这个问题，AQS的解决方法是线程在竞争锁时：<br>公平锁 - 需要判断排队队列中是否有阻塞的线程，如果有则需要排队等待；<br>非公平锁 - 不管排队队列中是否有等待竞争锁的线程，都会直接去尝试更改互斥变量state来竞争锁（假设占用锁的线程刚好释放锁，将state改为0，而某一个线程刚好正尝试更改state为1，那么它就占用到锁，所以这个过程是非公平的）</li>
+</ol>
+<p><img src="/images/illustration/882a120b7b68470fb68baa95027c58cd.png" alt="AQS简要模型"></p>
+<h2 id="成员属性-state"><a href="#成员属性-state" class="headerlink" title="成员属性 - state"></a>成员属性 - state</h2><p><strong>AQS中有一个成员属性：</strong><code>private volatile int state</code></p>
+<p>state是用于判断共享资源当前是否被占用的标记位，volatile关键字用于保证线程之间的可见性（关于volatile关键字在本系列后面的博客中介绍），可见性简单来说就是当一个线程修改了state的值时，其他线程下一次读取state的值都能读取到最新值，而不会是旧值。</p>
+<p><strong>为什么state不用boolean来简单标记是否有线程占用而是要用int？</strong><br>在独占模式下，确实只会有一个线程获取到锁；但是在共享锁下，可以有多个线程共同访问共享资源，这时如果有线程想独占这个锁，需要等所有正在访问共享资源的线程停止访问，所以我们需要用int的值来记录线程占用数量。</p>
+<p>&nbsp; </p>
+<h2 id="内部类-Node"><a href="#内部类-Node" class="headerlink" title="内部类 - Node"></a>内部类 - Node</h2><p>上文我们说到AQS中存在一个竞争资源的线程的排队队列，这个队列中的每一个节点就是Node类型的对象。</p>
+<p>Node类中的关键成员属性：</p>
+<ul>
+<li><code>volatile Thread thread</code>：该Node节点中存储的线程对象</li>
+<li><code>volatile int waitStatus</code>：节点在队列中的等待状态</li>
+<li><code>volatile Node prev</code>和<code>volatile Node next</code>：节点的前后指针，指向节点在队列中前面的节点和后面的节点</li>
+</ul>
+<p>waitStatus成员属性具有四个状态：</p>
+<ul>
+<li>0：节点已释放锁，这是初始化默认值</li>
+<li>1：CANCELLED，当前节点获取锁的请求被取消</li>
+<li>-1：SIGNAL，当前节点的后续节点需要被唤醒</li>
+<li>-2：CONDITION，当前节点正在等待某一个Condition对象，与条件模式相关</li>
+<li>-3：PROPAGATE，传递共享模式下锁释放状态，和共享模式相关</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="方法-tryAcquire-和-acquire"><a href="#方法-tryAcquire-和-acquire" class="headerlink" title="方法 - tryAcquire 和 acquire"></a>方法 - tryAcquire 和 acquire</h2><p><strong>tryAcquire方法：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">protected</span> <span class="type">boolean</span> <span class="title function_">tryAcquire</span> <span class="params">(<span class="type">int</span> arg)</span> &#123;</span><br><span class="line">	<span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">UnsupportedOperationException</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>tryAcquire方法中只有一行代码：<code>throw new UnsupportedOperationException();</code></p>
+<p>意思是要求AQS的继承类必须重写tryAcquire方法，否则就直接抛出异常。</p>
+<p>tryAcquire方法要求上层自己实现，是因为尝试获取锁这个操作可能包含业务自定义的逻辑，比如是否“可重入”。</p>
+<p>tryAcquire方法的参数是一个int值，表示对state的增加操作。如果tryAcquire返回true，意味着线程获得锁，否则意味着线程获取锁失败。<br>如果通过tryAcquire方法获取锁失败，上层逻辑不想接着等待锁，可以自己进行相应处理；如果选择等待锁，那么可以调用acquire方法来进行排队获取锁。</p>
+<p><strong>acquire方法：</strong></p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">final</span> <span class="keyword">void</span> <span class="title function_">acquire</span> <span class="params">(<span class="type">int</span> arg)</span> &#123;</span><br><span class="line">	<span class="keyword">if</span> (!tryAcquire (arg) &amp;&amp;</span><br><span class="line">		acquireQueued(addWaiter(Node.EXCLUSIVE), arg))</span><br><span class="line">		selfInterrupt();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>acquire方法被final修饰，不可被重写。</p>
+<p>if 语句中包含两个部分：</p>
+<ul>
+<li>!tryAcquire(arg)</li>
+<li>acquireQueued(addWaiter(Node.EXCLUSIVE), arg)</li>
+</ul>
+<p>!tryAcquire(arg)这个部分我们上面已经提到了，如果通过tryAcquire获取锁成功，则无需排队。这里只有通过tryAcquire获取锁失败后才接着进行下面的操作。</p>
+<p>在acquireQueued(addWaiter(Node.EXCLUSIVE), arg)这个部分中，这里涉及到addWaiter方法。</p>
+<p><strong>addWaiter方法：</strong><br>顾名思义，这个方法的作用就是将当前线程封装成一个Node，并让其加入等待队列，然后返回该Node对象。AQS中的队列是先入先出的，所以这个新生成的Node对象会被插入到队列的尾部。（但是存在多个线程同时调用addWaiter方法的情况，这个需要进一步去剖析addWaiter方法去知晓是怎么解决多线程场景，这里本篇文章不提及，感兴趣的同学可以看文章末尾参考资料中寒食君的视频）</p>
+<p><strong>acquiredQueued方法：</strong><br>如果当前线程所在的节点是头节点的后继节点，那么它会不断尝试获取锁，直到获取成功；如果不是头节点的后继节点，就会判断是否需要挂起。所以头节点后的第一个节点在自旋CAS尝试获取锁，其他线程都已经被挂起或者正在被挂起。这样做，起到了最大限度避免无用自旋消耗CPU资源。（acquiredQueue方法的细节同理可以看寒食君的视频）</p>
+<p>&nbsp; </p>
+<h2 id="同步等待队列与条件队列"><a href="#同步等待队列与条件队列" class="headerlink" title="同步等待队列与条件队列"></a>同步等待队列与条件队列</h2><p><strong>同步等待队列：</strong><br>上文我们提到的排队队列其实就是同步等待队列，也称为CLH队列。同步等待队列中所有线程排着队等着竞争到锁。</p>
+<p><strong>条件队列：</strong></p>
+<p>关于条件队列可以看参考文章1和参考文章2（在文末）</p>
+<p>当某个线程调用了wait方法，或者通过Condition对象调用了await相关方法，线程就会进入阻塞状态，并加入到对应条件队列中。</p>
+<p><strong>什么是Condition对象？</strong><br>Condition对象表示一个条件，不同线程可以通过该条件进行通信。<br>线程可以通过<code>await</code>方法注册在Condition对象上进行等待，然后通过Condition对象的<code>signal</code>方法将该对象唤醒。这有点类似于Object锁的wait和notify方法，但不同的是一个Lock对象可以关联多个Condition对象，多个线程可以被绑定在不同的Condition对象上，这样就可以分组等待唤醒。</p>
+<p><strong>AQS拥有一个同步等待队列且可以有多个条件队列。</strong><br>同步等待队列与条件队列的关系：<br><img src="/images/illustration/5c89406ea36045e5ac4c9d2a64ecfb41.png" alt="在这里插入图片描述"><br><strong>节点从同步队列到条件队列：</strong><br>当前线程存在于同步队列的头节点，此时调用await方法进行阻塞，将该节点移动到条件队列的尾节点。<br><img src="/images/illustration/61e555cad39649e0855a55917a3bbd87.png" alt="在这里插入图片描述"><br><strong>节点从条件队列到同步队列：</strong><br>通过调用Condition中的signal方法或signalAll方法将条件队列中的头节点转移到同步队列的尾节点并唤醒该线程，进行排队。<br><img src="/images/illustration/0db8311530714b0884212558e65d34bb.png" alt="在这里插入图片描述"><br>&nbsp; </p>
+<p>以下简单介绍一下Semaphore、CountDownLatch和CyclicBarrier这三种基于AQS实现的锁</p>
+<h2 id="Semaphore"><a href="#Semaphore" class="headerlink" title="Semaphore"></a>Semaphore</h2><p>Semaphore指信号量，是一种共享锁，允许指定多个线程同时访问某个资源。<br>Semaphore也有公平模式与非公平模式，即遵循FIFO与抢占式的区别，默认是非公平模式的。<br>使用Semaphore必须在构造器中指定允许同时访问资源的线程数量。</p>
+<h2 id="CountDownLatch"><a href="#CountDownLatch" class="headerlink" title="CountDownLatch"></a>CountDownLatch</h2><p>CountDownLatch指倒计时器，也是一种共享锁。<br>CountDownLatch默认初始化时会将state设定为指定的一个值。<br>当调用countDown方法时，就会通过CAS将state值减1。<br>当调用await方法时，会判断当前state是否为0，如果不是，当前线程会一直阻塞直到state变为0。</p>
+<p><strong>CountDownLatch的两个典型使用场景：</strong></p>
+<ol>
+<li><strong>让某一线程在开始运行前等待n个线程执行完毕</strong><br>将CountDownLatch的计数器初始化为n，每当一个任务线程执行完成，计数器减1，直到计数器变为0，在CountDownLatch上await的线程就会被唤醒。用于启动一个服务时，让主线程等待多个组件加载完成后再继续执行。</li>
+<li><strong>实现多个线程开始执行任务的最大并行性</strong><br>注意是并行性，不是并发性，是要让多个线程同时开始执行以得到最大并行性。将CountDownLatch计数器设为1，多个线程在执行任务前首先进行CountDownLatch中的await方法，然后主线程调用countdown方法将计数器设为0，这时多个线程开始同时被唤醒，得到最大的并行性。</li>
+</ol>
+<p><strong>CountDownLatch的不足：</strong> CountDownLatch是一次性的，计数器的值只能在构造方法中初始化一次，之后没法再设置其值，且CountDownLatch使用完毕后不能再使用。因此引入了<strong>CyclicBarrier</strong>。</p>
+<h2 id="CyclicBarrier"><a href="#CyclicBarrier" class="headerlink" title="CyclicBarrier"></a>CyclicBarrier</h2><p>CyclicBarrier指循环屏障，与CountDownLatch非常类似，但是它比CountDownLatch更复杂更强大，应用场景与CountDownLatch类似。</p>
+<p>CyclicBarrier可以理解为一个屏障，它会指定一个线程数，当一组线程到达屏障处时会被阻塞，只有到达屏障的线程数达到规定的线程数时，这个阀门才会打开，所有被屏障拦截的线程会开始继续干活。</p>
+<p><strong>CyclicBarrier和CountDownLatch的区别：</strong><br>CountDownLatch的计数器只能用一次；CyclicBarrier的计数器提供了reset功能，可以多次使用。<br>CountDownLatch的计数器是递减的，每完成一个线程计数器就减一；CyclicBarrier的计数器是递增的，它更像是一个阀门，需要所有线程都到达，阀门才打开。</p>
+<p>&nbsp;<br>&nbsp; </p>
+<h1 id="Reentrantlock"><a href="#Reentrantlock" class="headerlink" title="Reentrantlock"></a>Reentrantlock</h1><p><strong>简要概括Reentrantlock：</strong><br>Reentrantlock是基于AQS实现的可重入锁，它实现了公平锁和非公平锁，在开发中可以使用它对共享资源进行同步。<br>Reentrant的翻译是“可重入”，可重入性的意思是，一个线程可以不用释放而重复获取一个锁多次，且在释放锁的时候也需要相应释放多次。<br>什么是公平锁和非公平锁？</p>
+<ul>
+<li>公平锁就是锁的分配会按照请求获取锁的顺序，比如AQS中的FIFO排队队列，实现的就是公平锁。</li>
+<li>非公平锁就是锁的分配不用按照请求锁的顺序，比如是抢占式的。</li>
+</ul>
+<p><strong>为什么要设计非公平锁？</strong><br>在很多情况下，非公平锁其实效率更高。公平锁是按顺序线程请求锁的顺序来让线程竞争到锁，而非公平锁则意味着后请求的线程可能在排队队列前的休眠线程恢复前拿到锁，这样可以省去等待休眠线程恢复的过程，提高了并发的性能。当唤醒挂起的线程时，线程状态切换之间可能会产生短暂延迟，非公平锁可以利用这段时间完成操作，这也是非公平锁比公平锁性能好的原因。</p>
+<p><strong>可重入性</strong><br>假设一个锁是不支持可重入的，线程A获取了该锁，当它想再次获取这个锁时发现已经被占用了，则需要先等待锁的释放，但是这时候它已经获得了该锁，又在等自己释放，就形成了死锁。<br>在可重入锁中，同一个线程每次获取该锁，锁的计数器会自增1。</p>
+<p>Reentrantlock实现了Lock接口，那么它就拥有Lock的抽象意义。<br>Lock接口中只对六个方法进行了定义：</p>
+<ul>
+<li><code>void lock()</code>：线程尝试获取锁，会等待直到获取到锁为止</li>
+<li><code>void lockInterruptibly()</code>：与<code>lock()</code>类似，区别在于线程在等待锁的过程中如果被中断，将会退出等待并抛出异常</li>
+<li><code>boolean tryLock()</code>：尝试获取锁，并立刻返回，返回值代表是否获取到锁</li>
+<li><code>voolean tryLock(long time, TimeUnit unit)</code>：尝试获取锁并设定等待超时时间</li>
+<li><code>void unlock()</code>：释放锁</li>
+<li><code>Condition newCondition()</code>：新建一个绑定在当前Lock对象上的Condition对象<br>&nbsp;</li>
+</ul>
+<h2 id="成员属性-sync"><a href="#成员属性-sync" class="headerlink" title="成员属性 - sync"></a>成员属性 - sync</h2><p>Reentrantlock类只有一个成员属性：<code>private final Sync sync</code></p>
+<p>sync属性是<strong>Sync</strong>类型，被final修饰，意味着一旦初始化即不可更改。</p>
+<p>Reentrantlock类中有三个重要的内部类，分别是<strong>Sync</strong>类、<strong>NonfairSync</strong>类和<strong>FairSync</strong>类，其中NonfairSync类和FairSync类顾名思义代表着非公平锁和公平锁。</p>
+<p>sync是在Reentrantlock构造器中被初始化，在无参构造器中，默认被初始化为非公平锁，在带参数的构造器中，依据传入的参数指定被初始化为公平锁还是非公平锁。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="title function_">ReentrantLock</span><span class="params">()</span>&#123;</span><br><span class="line">	sync = <span class="keyword">new</span> <span class="title class_">NonfairSync</span>();</span><br><span class="line">&#125;</span><br><span class="line"></span><br><span class="line"><span class="keyword">public</span> <span class="title function_">ReentrantLock</span><span class="params">(<span class="type">boolean</span> fair)</span>&#123;</span><br><span class="line">	sync = fair ? <span class="keyword">new</span> <span class="title class_">FairSync</span>() : <span class="keyword">new</span> <span class="title class_">NonfairSync</span>();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>&nbsp; </p>
+<h2 id="内部类-Sync"><a href="#内部类-Sync" class="headerlink" title="内部类 - Sync"></a>内部类 - Sync</h2><p><code>abstract static class Sync extends AbstractQueueSynchronizer</code></p>
+<p>Sync继承了AQS，且被abstract修饰，意味着它提供一些公共逻辑但需要子类来进行实例化。NonfairSync类和FairSync类是它唯二的子类。</p>
+<p>Sync类没有属性，且除了<code>lock</code>和<code>readObject</code>两个方法外其它的方法都使用final修饰，即不可被子类修改。</p>
+<p>非final方法：</p>
+<ul>
+<li><code>void lock()</code>：获取锁的操作，这是个空实现的方法，需要子类根据自己的特征去实现。NonfairSync和FairSync因为设计公平性的差别，获取锁的操作是不同的，需要自己来实现这个方法。</li>
+<li><code>readObject(java.io.ObjectInputStream s)</code>：这个方法用于反序列化，本文不讨论。</li>
+</ul>
+<p>final方法：</p>
+<ul>
+<li><code>final boolean nonfairTryAcquire(int acquires)</code>：<ul>
+<li>这个方法会获取AQS维护的state值</li>
+<li>如果state为0，通过CAS修改state的值，如果修改成功则当前线程获得锁，并将当前线程设为独占线程，返回true，否则返回false</li>
+<li>如果state不为0，则说明锁已被占用，此时判断当前线程是否为独占线程。为什么？因为此时占有这个锁的线程也有可能是当前线程啊！所以这里就是Reentrantlock“可重入性”的实现。</li>
+</ul>
+</li>
+<li><code>protected final boolean tryRelease(int releases)</code>：释放锁的操作</li>
+<li><code>protected final boolean isHeldExclusively()</code>：判断当前线程是否为锁的独占线程</li>
+<li><code>final ConditionObject newCondition()</code>：基于当前Lock对象新建一个Condition对象</li>
+<li><code>final Thread getOwner()</code>：获取正在占用锁的线程对象</li>
+<li><code>final int getHoldCount()</code>：获取state的数值</li>
+<li><code>final boolean isLocked()</code>：判断锁是否空闲</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="内部类-NonfairSync"><a href="#内部类-NonfairSync" class="headerlink" title="内部类 - NonfairSync"></a>内部类 - NonfairSync</h2><p>NonfairSync类只重写了Sync类中的lock方法以及AQS中的tryAcquire方法。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">NonfairSync</span> <span class="keyword">extends</span> <span class="title class_">Sync</span> &#123;</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">long</span> <span class="variable">serialVersionUID</span> <span class="operator">=</span> <span class="number">7316153563782823691L</span>;</span><br><span class="line">	<span class="keyword">final</span> <span class="keyword">void</span> <span class="title function_">lock</span><span class="params">()</span> &#123;</span><br><span class="line">		<span class="keyword">if</span> (compareAndSetState(<span class="number">0</span>, <span class="number">1</span>))</span><br><span class="line">			setExclusiveOwnerThread(Thread.currentThread());</span><br><span class="line">		<span class="keyword">else</span></span><br><span class="line">			acquire(<span class="number">1</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">protected</span> <span class="keyword">final</span> <span class="type">boolean</span> <span class="title function_">tryAcquire</span><span class="params">(<span class="type">int</span> acquires)</span> &#123;</span><br><span class="line">		<span class="keyword">return</span> nonfairTryAcquire (acquires);</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>final void lock()</code>：首先尝试通过CAS进行一次对锁的获取。如果尝试失败，则调用AQS中的acquire方法。</p>
+<p><strong>可重入性：</strong><br>当程序调用acquire时会先调用tryAcquire来尝试获取锁，在tryAcquire方法中调用了nonfairTryAcquire方法，nonfairTryAcquire方法中已经实现了可重入性。</p>
+<p><strong>非公平性：</strong><br>当程序调用lock方法时，会先进行一次CAS的尝试，如果获取锁失败，会再调用AQS的acquire方法。在acquire方法中，首先会调用一次tryAcquire方法，tryAcquire方法中直接调用了nonfairTryAcquire方法，而nonfairTryAcquire会直接尝试获取锁，如果锁被占用且不可重入，则继续执行AQS中的后续排队流程。虽然这个过程中只有<strong>两次</strong>尝试抢占，但是也体现了非公平性。</p>
+<p>&nbsp; </p>
+<h2 id="内部类-FairSync"><a href="#内部类-FairSync" class="headerlink" title="内部类 - FairSync"></a>内部类 - FairSync</h2><p>FairSync类也重写了Sync类中的lock方法以及AQS中的tryAcquire方法。</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br><span class="line">20</span><br><span class="line">21</span><br><span class="line">22</span><br><span class="line">23</span><br><span class="line">24</span><br><span class="line">25</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">final</span> <span class="keyword">class</span> <span class="title class_">FairSync</span> <span class="keyword">extends</span> <span class="title class_">Sync</span> &#123;</span><br><span class="line">	<span class="keyword">private</span> <span class="keyword">static</span> <span class="keyword">final</span> <span class="type">long</span> <span class="variable">serialVersionUID</span> <span class="operator">=</span> <span class="number">3000897897090466540L</span>;</span><br><span class="line">	<span class="keyword">final</span> <span class="keyword">void</span> <span class="title function_">lock</span><span class="params">()</span> &#123;</span><br><span class="line">		acquire(<span class="number">1</span>);</span><br><span class="line">	&#125;</span><br><span class="line">	<span class="keyword">protected</span> <span class="keyword">final</span> <span class="type">boolean</span> <span class="title function_">tryAcquire</span><span class="params">(<span class="type">int</span> acquires)</span> &#123;</span><br><span class="line">		<span class="keyword">final</span> <span class="type">Thread</span> <span class="variable">current</span> <span class="operator">=</span> Thread.currentThread();</span><br><span class="line">		<span class="type">int</span> <span class="variable">c</span> <span class="operator">=</span> getState();</span><br><span class="line">		<span class="keyword">if</span> (c == <span class="number">0</span>) &#123;</span><br><span class="line">			<span class="keyword">if</span> (!hasQueuedPredecessors() &amp;&amp;</span><br><span class="line">				compareAndSetState(<span class="number">0</span>, acquires)) &#123;</span><br><span class="line">				setExclusiveOwnerThread(current);</span><br><span class="line">				<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">			&#125;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">else</span> <span class="keyword">if</span> (current == getExclusiveOwnerThread()) &#123;</span><br><span class="line">			<span class="type">int</span> <span class="variable">nextc</span> <span class="operator">=</span> c + acquires;</span><br><span class="line">			<span class="keyword">if</span> (nextc &lt; <span class="number">0</span>)</span><br><span class="line">				<span class="keyword">throw</span> <span class="keyword">new</span> <span class="title class_">Error</span> (<span class="string">&quot;Maximum lock count exceeded&quot;</span>);</span><br><span class="line">			setState(nextc);</span><br><span class="line">			<span class="keyword">return</span> <span class="literal">true</span>;</span><br><span class="line">		&#125;</span><br><span class="line">		<span class="keyword">return</span> <span class="literal">false</span>;</span><br><span class="line">	&#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p><code>final void lock()</code>：直接调用AQS的acquire方法。</p>
+<p><strong>可重入性：</strong><br>当程序调用acquire方法时，会首先调用一次tryAcquire方法。FairSync类中的tryAcquire方法自己实现了类似于nonfairTryAcquire中可重入锁的判断。</p>
+<p><strong>公平性：</strong><br>在tryAcquire方法中，首先判断锁是否空闲，如果空闲，此时并不是直接尝试通过CAS去获取锁，而是需要判断是否存在前置等待节点。如果不存在，说明队列中确实轮到了当前线程来尝试获取锁；如果存在，tryAcquire返回false，当前线程将会执行AQS的后续等待逻辑。这里的排队操作体现出了公平性。</p>
+<p>&nbsp; </p>
+<h2 id="方法-lockInterruptibly"><a href="#方法-lockInterruptibly" class="headerlink" title="方法 - lockInterruptibly"></a>方法 - lockInterruptibly</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">void</span> <span class="title function_">lockInterruptibly</span><span class="params">()</span> <span class="keyword">throws</span> InterruptedException&#123;</span><br><span class="line">	sync.acquireInterruptiby(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>lockInterrupt方法直接调用sync对象的acquireInterruptibly方法，该方法的实现存在于AQS内部。</p>
+<p>lockInterruptibly与lock的区别在于，当线程在等待锁的期间，是否立即响应中断。</p>
+<ul>
+<li>lock方法中，线程会在等待获取锁之后，再响应中断</li>
+<li>lockInterruptibly方法中，若线程在等待获取锁期间被调用了中断，那么将会立即抛出异常</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="方法-tryLock"><a href="#方法-tryLock" class="headerlink" title="方法 - tryLock"></a>方法 - tryLock</h2><figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="type">boolean</span> <span class="title function_">tryLock</span><span class="params">()</span>&#123;</span><br><span class="line">	<span class="keyword">return</span> sync.nonfairTryAcquire(<span class="number">1</span>);</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>注意到这里不论当前Reentrantlock对象是公平锁还是非公平锁，都是直接调用了sync对象的nonfairTryAcquire方法，所以<strong>Reentrantlock对象的tryLock操作都是非公平的</strong>。这也是nonfairTryAcquire方法为什么是在Sync类中定义而不是在NonfairSync中定义的原因。</p>
+<p>&nbsp; </p>
+<h2 id="比较synchronized和Reentrantlock"><a href="#比较synchronized和Reentrantlock" class="headerlink" title="比较synchronized和Reentrantlock"></a>比较synchronized和Reentrantlock</h2><ul>
+<li><strong>两者都是可重入锁</strong></li>
+<li><strong>synchronized是Java中的关键字，Reentrantlock是JUC包中的一个类</strong></li>
+<li><strong>synchronized依赖于JVM而Reentrantlock依赖于API</strong></li>
+<li><strong>Reentrantlock比synchronized增加了一些高级功能</strong><ul>
+<li><strong>等待可中断：</strong> Reentrantlock提供了一种能够中断等待锁的线程的机制，通过 lock.lockInterruptibly() 来实现这个机制。也就是说正在等待的线程可以选择放弃等待，改为处理其他事情。</li>
+<li><strong>可实现公平锁：</strong> ReentrantLock可以指定是公平锁还是非公平锁。而synchronized只能是非公平锁。所谓的公平锁就是先等待的线程先获得锁。ReentrantLock默认情况是非公平的，可以通过 ReentrantLock 类的 ReentrantLock(boolean fair) 构造方法来制定是否是公平的。</li>
+<li><strong>可实现选择性通知（锁可以绑定多个条件）：</strong> synchronized关键字与wait()和notify()&#x2F;notifyAll()方法相结合可以实现等待&#x2F;通知机制。ReentrantLock类当然也可以实现，但是需要借助于Condition接口与newCondition()方法。<blockquote>
+<p><strong>Condition</strong>是 JDK1.5 之后才有的，它具有很好的灵活性，比如可以实现多路通知功能也就是在一个Lock对象中可以创建多个Condition实例（即对象监视器）。<br><strong>线程对象可以注册在指定的Condition中，从而可以有选择性的进行线程通知，在调度线程上更加灵活。 在使用notify()&#x2F;notifyAll()方法进行通知时，被通知的线程是由 JVM 选择的，用ReentrantLock类结合Condition实例可以实现“选择性通知”</strong> ，这个功能非常重要，而且是 Condition 接口默认提供的。<br>而synchronized关键字就相当于整个 Lock 对象中只有一个Condition实例，所有的线程都注册在它一个身上。如果执行notifyAll()方法的话就会通知所有处于等待状态的线程，这样会造成很大的效率问题，而Condition实例的signalAll()方法只会唤醒注册在该Condition实例中的所有等待线程。</p>
+</blockquote>
+</li>
+</ul>
+</li>
+</ul>
+<h2 id="ReentrantReadWriteLock"><a href="#ReentrantReadWriteLock" class="headerlink" title="ReentrantReadWriteLock"></a>ReentrantReadWriteLock</h2><p>这里简单说一下ReentrantReadWriteLock，它也是基于AQS实现的一个锁，但是它叫做读写锁，可以允许多个线程同时访问共享资源。当读操作数量远远大于写操作数量时，读写锁非常有用。</p>
+<hr>
+<p>关于Java并发中的AQS、Reentrantlock就介绍到这里，之后我也会接着更新关于volatile、ThreadLocal、线程池等于Java并发有关的知识。</p>
+<p>如果你喜欢这篇文章的话，不妨给我个赞吧！</p>
+<hr>
+<p>参考：</p>
+<ol>
+<li>B站up主 寒食君关于java并发系列的视频：<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV12K411G7Fg?spm_id_from=333.999.0.0">视频链接1</a>、<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1ta4y1H73X?spm_id_from=333.999.0.0">视频链接2</a></li>
+<li>B站up主 跟着Mic学架构 关于AQS的视频：<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1Rm4y1R7Px?spm_id_from=333.999.0.0">视频链接</a></li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/qq_45802080/article/details/122769965">参考文章1</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/c330a5e7db71">参考文章2</a></li>
+<li><a target="_blank" rel="noopener" href="https://snailclimb.gitee.io/javaguide/#/docs/java/concurrent/java-concurrent-questions-02?id=_15-%e8%b0%88%e8%b0%88-synchronized-%e5%92%8c-reentrantlock-%e7%9a%84%e5%8c%ba%e5%88%ab">JavaGuide中的一篇文章</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/03/23-08-57/" title="Java并发（二）AQS、Reentrantlock">https://iamboger.github.io/2024/03/03/23-08-57/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/03/20-58-53/" rel="prev" title="Java并发（一）锁机制、悲观锁、乐观锁">
+                  <i class="fa fa-angle-left"></i> Java并发（一）锁机制、悲观锁、乐观锁
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/03/04/01-42-10/" rel="next" title="Java并发（三）volatile关键字">
+                  Java并发（三）volatile关键字 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

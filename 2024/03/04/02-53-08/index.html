@@ -1,0 +1,465 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="在本Java并发系列博客的前三篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS、Reentrantlock、volatile关键字等关于Java并发的内容。 本篇将讲述Java中的ThreadLocal类。 ThreadLocalJDK提供的ThreadLocal类用于实现每一个线程拥有自己的专属本地变量。 当创建一个ThreadLocal类型的变量时，访问这个变量的每个线程都会有这个">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java并发（四）ThreadLocal类">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/04/02-53-08/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="在本Java并发系列博客的前三篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS、Reentrantlock、volatile关键字等关于Java并发的内容。 本篇将讲述Java中的ThreadLocal类。 ThreadLocalJDK提供的ThreadLocal类用于实现每一个线程拥有自己的专属本地变量。 当创建一个ThreadLocal类型的变量时，访问这个变量的每个线程都会有这个">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/e2afbf4554fa4e56aebec23775d8cece.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/aa44d2b7d37d4b33aedf62a98de4a03e.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/fd35dec83cd3467b954240e336b9bfcc.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/498332358f2c42e6a7431cb31ef611ca.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/e2c02fbbfc2d4fd3bdb253c69e90f9db.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/ba5ffa09cd79481ea844d657d1c38122.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/e2c02fbbfc2d4fd3bdb253c69e90f9db-20240304025444684.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/6a3c8c5f187b406ba922abb2f278f3bf.png">
+<meta property="article:published_time" content="2024-03-03T18:53:08.000Z">
+<meta property="article:modified_time" content="2024-03-03T19:19:28.386Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/e2afbf4554fa4e56aebec23775d8cece.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/04/02-53-08/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/04/02-53-08/","path":"2024/03/04/02-53-08/","title":"Java并发（四）ThreadLocal类"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java并发（四）ThreadLocal类 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#ThreadLocal"><span class="nav-number">1.</span> <span class="nav-text">ThreadLocal</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#ThreadLocal%E5%BA%94%E7%94%A8%E5%9C%BA%E6%99%AF"><span class="nav-number">1.1.</span> <span class="nav-text">ThreadLocal应用场景</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ThreadLocal%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-number">1.2.</span> <span class="nav-text">ThreadLocal实现原理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#ThreadLocalMap"><span class="nav-number">1.2.1.</span> <span class="nav-text">ThreadLocalMap</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Entry%E4%B8%AD%E7%9A%84%E5%BC%B1%E5%BC%95%E7%94%A8"><span class="nav-number">1.2.2.</span> <span class="nav-text">Entry中的弱引用</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Entry%E7%9A%84%E5%86%85%E5%AD%98%E6%B3%84%E9%9C%B2%E9%97%AE%E9%A2%98"><span class="nav-number">1.3.</span> <span class="nav-text">Entry的内存泄露问题</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ThreadLocal%E5%AF%B9%E8%BF%87%E6%9C%9Fkey%E7%9A%84%E6%B8%85%E7%90%86"><span class="nav-number">1.4.</span> <span class="nav-text">ThreadLocal对过期key的清理</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A2%E6%B5%8B%E5%BC%8F%E6%B8%85%E7%90%86"><span class="nav-number">1.4.1.</span> <span class="nav-text">探测式清理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%90%AF%E5%8F%91%E5%BC%8F%E6%B8%85%E7%90%86"><span class="nav-number">1.4.2.</span> <span class="nav-text">启发式清理</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%8E%A2%E6%B5%8B%E5%BC%8F%E6%B8%85%E7%90%86%E5%92%8C%E5%90%AF%E5%8F%91%E5%BC%8F%E6%B8%85%E7%90%86%E5%88%86%E5%88%AB%E6%98%AF%E4%BB%80%E4%B9%88%E6%97%B6%E5%80%99%E4%BC%9A%E5%8F%91%E7%94%9F"><span class="nav-number">1.4.3.</span> <span class="nav-text">探测式清理和启发式清理分别是什么时候会发生</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ThreadLocalMap%E6%89%A9%E5%AE%B9%E6%9C%BA%E5%88%B6"><span class="nav-number">1.5.</span> <span class="nav-text">ThreadLocalMap扩容机制</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%BA%BF%E7%A8%8B%E6%B1%A0%E9%85%8D%E5%90%88ThreadLocal%E4%BD%BF%E7%94%A8%E6%97%B6%E5%8F%AF%E8%83%BD%E5%AD%98%E5%9C%A8%E7%9A%84%E9%97%AE%E9%A2%98"><span class="nav-number">1.6.</span> <span class="nav-text">线程池配合ThreadLocal使用时可能存在的问题</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/04/02-53-08/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java并发（四）ThreadLocal类 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java并发（四）ThreadLocal类
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2024-03-04 02:53:08 / Modified: 03:19:28" itemprop="dateCreated datePublished" datetime="2024-03-04T02:53:08+08:00">2024-03-04</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/Java%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">Java并发</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>在本Java并发系列博客的前三篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS、Reentrantlock、volatile关键字等关于Java并发的内容。</p>
+<p>本篇将讲述Java中的ThreadLocal类。</p>
+<h1 id="ThreadLocal"><a href="#ThreadLocal" class="headerlink" title="ThreadLocal"></a>ThreadLocal</h1><p>JDK提供的ThreadLocal类用于<strong>实现每一个线程拥有自己的专属本地变量</strong>。</p>
+<p>当创建一个ThreadLocal类型的变量时，访问这个变量的每个线程都会有这个变量的本地副本，存储着每个线程的私有数据，每个线程可以通过get方法和set方法来获取和更改当前线所存的副本的值，进而避免了线程安全问题。</p>
+<span id="more"></span>
+
+<p>这里引用JavaGuide中举的例子：</p>
+<blockquote>
+<p>比如有两个人去宝屋收集宝物，这两个共用一个袋子的话肯定会产生争执，但是给他们两个人每个人分配一个袋子的话就不会出现这样的问题。如果把这两个人比作线程的话，那么 ThreadLocal 就是用来避免这两个线程竞争的。</p>
+</blockquote>
+<p>ThreadLocal示例代码：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br><span class="line">14</span><br><span class="line">15</span><br><span class="line">16</span><br><span class="line">17</span><br><span class="line">18</span><br><span class="line">19</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> <span class="keyword">class</span> <span class="title class_">Sample</span> &#123;</span><br><span class="line">    <span class="keyword">static</span> ThreadLocal&lt;Integer&gt; threadLocal = <span class="keyword">new</span> <span class="title class_">ThreadLocal</span>&lt;&gt;();</span><br><span class="line"></span><br><span class="line">    <span class="keyword">public</span> <span class="keyword">static</span> <span class="keyword">void</span> <span class="title function_">main</span><span class="params">(String[] args)</span> <span class="keyword">throws</span> InterruptedException &#123;</span><br><span class="line">        <span class="type">Thread</span> <span class="variable">t1</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">            System.out.println(threadLocal.get());</span><br><span class="line">            threadLocal.set(<span class="number">0</span>);</span><br><span class="line">            System.out.println(threadLocal.get());</span><br><span class="line">        &#125;);</span><br><span class="line">        <span class="type">Thread</span> <span class="variable">t2</span> <span class="operator">=</span> <span class="keyword">new</span> <span class="title class_">Thread</span>(() -&gt; &#123;</span><br><span class="line">            System.out.println(threadLocal.get());</span><br><span class="line">            threadLocal.set(<span class="number">0</span>);</span><br><span class="line">            System.out.println(threadLocal.get());</span><br><span class="line">        &#125;);</span><br><span class="line">        t1.start();</span><br><span class="line">        t1.join();</span><br><span class="line">        t2.start();</span><br><span class="line">    &#125;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>上述程序的输出：</p>
+<blockquote>
+<p>null<br>0<br>null<br>0</p>
+</blockquote>
+<p><strong>ThreadLocal变量的默认值是null</strong>，在线程 t1 和 t2 对该变量副本赋值之前，变量副本的值都是null。可见线程 t2 无法读取到线程 t1 设置的变量副本的值。</p>
+<p>&nbsp; </p>
+<h2 id="ThreadLocal应用场景"><a href="#ThreadLocal应用场景" class="headerlink" title="ThreadLocal应用场景"></a>ThreadLocal应用场景</h2><p>假设有一个处理流程由一批操作组成，每一个操作都需要读取到一个全局变量。对于全局变量的声明我们经常使用的是static关键字来修饰。</p>
+<p>但是这个方法在多线程场景下是不适用的，因为不同线程可能同时正在进行这个处理流程，就会造成这个static全局变量的数据混乱，例如会产生static变量中一会儿是线程A中的数据，一会儿是线程B中的数据的情况。</p>
+<p>ThreadLocal正是应用于上述的场景中，它相当于每个线程都会有一个自己的全局变量，解决了全局变量被多个线程使用的问题。</p>
+<p>&nbsp; </p>
+<h2 id="ThreadLocal实现原理"><a href="#ThreadLocal实现原理" class="headerlink" title="ThreadLocal实现原理"></a>ThreadLocal实现原理</h2><p>ThreadLocal其实不存储任何值。</p>
+<p>每一个线程有一个ThreadLocalMap类型的成员属性threadLocals，在Thread类中有以下语句：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line">ThreadLocal.<span class="type">ThreadLocalMap</span> <span class="variable">threadLocals</span> <span class="operator">=</span> <span class="literal">null</span>;</span><br></pre></td></tr></table></figure>
+
+<p>我们不妨看看ThreadLocal中的get方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br><span class="line">7</span><br><span class="line">8</span><br><span class="line">9</span><br><span class="line">10</span><br><span class="line">11</span><br><span class="line">12</span><br><span class="line">13</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">public</span> T <span class="title function_">get</span><span class="params">()</span> &#123;</span><br><span class="line">    <span class="type">Thread</span> <span class="variable">t</span> <span class="operator">=</span> Thread.currentThread();</span><br><span class="line">    <span class="type">ThreadLocalMap</span> <span class="variable">map</span> <span class="operator">=</span> getMap(t);</span><br><span class="line">    <span class="keyword">if</span> (map != <span class="literal">null</span>) &#123;</span><br><span class="line">        ThreadLocalMap.<span class="type">Entry</span> <span class="variable">e</span> <span class="operator">=</span> map.getEntry(<span class="built_in">this</span>);</span><br><span class="line">        <span class="keyword">if</span> (e != <span class="literal">null</span>) &#123;</span><br><span class="line">            <span class="meta">@SuppressWarnings(&quot;unchecked&quot;)</span></span><br><span class="line">            <span class="type">T</span> <span class="variable">result</span> <span class="operator">=</span> (T)e.value;</span><br><span class="line">            <span class="keyword">return</span> result;</span><br><span class="line">        &#125;</span><br><span class="line">    &#125;</span><br><span class="line">    <span class="keyword">return</span> setInitialValue();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>可以发现，get方法先得到当前运行的线程，接着得到当前线程的ThreadLocalMap类型成员属性threadlocals，我们看看getMap方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br></pre></td><td class="code"><pre><span class="line">ThreadLocalMap <span class="title function_">getMap</span><span class="params">(Thread t)</span> &#123;</span><br><span class="line">    <span class="keyword">return</span> t.threadLocals;</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+
+<p>&nbsp; </p>
+<h3 id="ThreadLocalMap"><a href="#ThreadLocalMap" class="headerlink" title="ThreadLocalMap"></a>ThreadLocalMap</h3><p>ThreadLocalMap是ThreadLocal的内部类，用于存储Key-Value键值对Entry。在ThreadLocalMap的键值对中，使用ThreadLocal的对象作为key。我们说ThreadLocal变量的默认值是null，其实是因为ThreadLocalMap中Entry的value值默认为null</p>
+<p><strong>捋一下关系：</strong><br>也就是说，每一个线程对象中都会拥有一个ThreadLocalMap类型的成员属性threadlocals，该成员属性用于存储每个线程自己的私有本地属性。<br>threadLocals是ThreadLocalMap类型，意味着它是一个Map，用于存储多个Entry，每个Entry是一个键值对，具有key和value。而这个key就是ThreadLocal类型，value是Object类型。<br><img src="/images/illustration/e2afbf4554fa4e56aebec23775d8cece.png" alt="在这里插入图片描述"><br>在上图中，我们有一个ThreadLocal类型的变量localString，当我们在线程A中调用<code>localString.set(&quot;IamBoger&quot;)</code>时，会将当前ThreadLocal变量localString作为key，到线程A的ThreadLocalMap中找到key是localString的Entry，然后将该Entry的value值设为”IamBoger”。调用<code>localString.get()</code>同理，只不过是将设置Entry中的value值换为获取Entry中的value值。</p>
+<p><strong>注意，不同于HashMap中使用链表法解决哈希冲突，ThreadLocalMap使用的是线性探测法解决哈希冲突</strong></p>
+<p>这里顺便提一下解决冲突方法的名称对应关系：<br>开散列法 - 链表法<br>闭散列法 - 开放地址法 - 线性探测法</p>
+<p>那为什么ThreadLocalMap要用开放地址法解决哈希冲突？我觉得是因为以下原因：</p>
+<ul>
+<li>开放地址法的缺点是处理哈希冲突效率较低。ThreadLocal变量不多的话，ThreadLocalMap中的Entry数也相对不多，哈希冲突概率较低，所以开放地址法的寻址效率也不会太低。</li>
+<li>开放地址法的优点是节省空间且易于实现，链表法需要额外的空间存储节点指针等，而使用开放地址法比较节省空间。</li>
+</ul>
+<p>&nbsp; </p>
+<h3 id="Entry中的弱引用"><a href="#Entry中的弱引用" class="headerlink" title="Entry中的弱引用"></a>Entry中的弱引用</h3><p>ThreadLocalMap类的代码中包含：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">static</span> <span class="keyword">class</span> <span class="title class_">Entry</span> <span class="keyword">extends</span> <span class="title class_">WeakReference</span>&lt;ThreadLocal&lt;?&gt;&gt;</span><br></pre></td></tr></table></figure>
+
+<p>ThreadLocalMap中Entry使用的key是对ThreadLocal实例的弱引用。</p>
+<p><strong>什么是弱引用？</strong> 这里引用JavaGuide中对弱引用的介绍：</p>
+<blockquote>
+<p>如果一个对象只具有弱引用，那就类似于可有可无的生活用品。弱引用与软引用的区别在于：只具有弱引用的对象拥有更短暂的生命周期。在垃圾回收器线程扫描它所管辖的内存区域的过程中，一旦发现了只具有弱引用的对象，不管当前内存空间足够与否，都会回收它的内存。不过，由于垃圾回收器是一个优先级很低的线程， 因此不一定会很快发现那些只具有弱引用的对象。<br>弱引用可以和一个引用队列（ReferenceQueue）联合使用，如果弱引用所引用的对象被垃圾回收，Java 虚拟机就会把这个弱引用加入到与之关联的引用队列中。</p>
+</blockquote>
+<p><img src="/images/illustration/aa44d2b7d37d4b33aedf62a98de4a03e.png" alt="img"><br>为什么要这么设计？我们这里先假设这个引用是强引用的话，如下图：<br><img src="/images/illustration/fd35dec83cd3467b954240e336b9bfcc.png" alt="img"><br>如果此时，ThreadLocal类型的ref出栈或者将ref置为null，即将图中的1号线断开。<br><img src="/images/illustration/498332358f2c42e6a7431cb31ef611ca.png" alt="img"><br>这时候，Entry中的key对堆中的ThreadLocal实例是强引用，则导致该ThreadLocal实例不会被回收。</p>
+<p>因此，我们需要将Entry中的key对堆中的ThreadLocal实例的引用设为弱引用，该弱引用在遇到GC时会断开。</p>
+<p><img src="/images/illustration/e2c02fbbfc2d4fd3bdb253c69e90f9db.png" alt="img"></p>
+<p>这时候，如果ThreadLocal类型的变量ref出栈或者置为null，则堆中实例就不会有对其的强引用，就会被回收。</p>
+<p>因此，需要将Entry中的key对ThreadLocal的引用设置为弱引用。<br><img src="/images/illustration/ba5ffa09cd79481ea844d657d1c38122.png" alt="img"><br>但是其实这里还有一个问题值得讨论，在发生一次GC时，key与堆中的ThreadLocal实例的弱引用断开了，也即是下图这种情况下：</p>
+<p><img src="/images/illustration/e2c02fbbfc2d4fd3bdb253c69e90f9db-20240304025444684.png" alt="img"></p>
+<p>key与堆中的ThreadLocal实例的弱引用断开了，那么key不就是null了吗？如果这时我们调用ref.get()，还能获取到对应的value的值吗？其实是可以的！</p>
+<p>要注意这时候，key的值并不是null！这里涉及到弱引用相关的知识：<strong>当弱引用所指向的对象与弱引用断开引用链时，如果此时该对象因为有其它引用而不被回收，那么此时该弱引用依然可以通过断开前的连接地址去获取值。</strong></p>
+<p>也就是说引用的断开不会影响我们引用的寻址功能。引用的断开只会导致引用链断开进而导致对象被GC回收。但是！此时若有一个强引用引用着该对象，那么弱引用就可以在无引用链的情况下继续访问该对象。（这里扩展一下。若对象的地址强制改变，弱引用将无法继续跟踪）</p>
+<p>举一个简单的案例：假设你买票上火车，找到了座位坐了进去。但是记性很差的你，上了个厕所回来找不到自己的座位了。此时，列车员始终可以根据你的购票档案查到你的座位号。</p>
+<p>因此，这就是key与ThreadLocal实例间的弱引用断开而仍然可以通过ref.get()访问到value的值的原因。只有当ref与堆中ThreadLocal实例间的强引用断开时，key才会被真正置为null。</p>
+<p>&nbsp; </p>
+<h2 id="Entry的内存泄露问题"><a href="#Entry的内存泄露问题" class="headerlink" title="Entry的内存泄露问题"></a>Entry的内存泄露问题</h2><p>上述我们讲到了Entry中的key是对ThreadLocal实例的弱引用，以此解决了ThreadLocal实例的内存泄露问题。</p>
+<p>但这样又存在一个问题，那就是Entry对象的<strong>内存泄露问题</strong>。</p>
+<p>当堆中的ThreadLocal实例被回收时，Entry中的key被设为了null，但是这时候value是还存在的，但是已经没法通过key来访问到它了，这就造成了新的内存泄漏问题。</p>
+<p><img src="/images/illustration/6a3c8c5f187b406ba922abb2f278f3bf.png" alt="img"></p>
+<p>ThreadLocalMap的实现其实已经考虑了这种情况。<strong>在调用ThreadLocal中的 set()、get()、remove() 方法时，会清理掉 key 为 null 的记录。</strong> 因此，在我们使用完 ThreadLocal 方法后，最好手动调用remove()方法。</p>
+<p>使用完ThreadLocal方法后手动调用remove方法的好处还包括可以解决“前世记忆”的问题，在下文会提到这个问题。</p>
+<p>那么ThreadLocal是如何清理key为null的Entry的呢？下面我们来看看。</p>
+<p>&nbsp; </p>
+<h2 id="ThreadLocal对过期key的清理"><a href="#ThreadLocal对过期key的清理" class="headerlink" title="ThreadLocal对过期key的清理"></a>ThreadLocal对过期key的清理</h2><p>ThreadLocal对过期key的清理方式分为两种清理方式，分别是<strong>探测式清理</strong>和<strong>启发式清理</strong>。</p>
+<h3 id="探测式清理"><a href="#探测式清理" class="headerlink" title="探测式清理"></a>探测式清理</h3><p><strong>探测式清理</strong>会进行遍历ThreadLocalMap中的散列数组，从开始位置向后探测清理过期数据，将过期的Entry设置为null，沿途中碰到未过期的Entry则将此Entry重新计算哈希值后重新在table散列数组中定位。</p>
+<p>为什么碰到未过期的数据要进行重新哈希和定位？<br>因为当前Entry在之前有可能是因为遇到了哈希冲突才被安排在这里，而此时原本与它发生哈希冲突的Entry可能已经被清理掉了，所以当前Entry需要进行重新哈希和定位判断是否需要放回到它原本该在的地方。<br>如果重新哈希和定位后再次发生冲突，处理同理是用线性探测找坑位。</p>
+<h3 id="启发式清理"><a href="#启发式清理" class="headerlink" title="启发式清理"></a>启发式清理</h3><p><strong>启发式清理</strong>会调用cleanSomeSlots方法，这个方法有两个参数，分别是 i 和 n，i 是开始清理的地方。在 i 处往前每扫描一个Entry，如果该Entry不需要被清理，那么 n 会往右移动一位（即除以2），直到 n 等于0，此时结束扫描。如果在这个过程中扫描到了需要清理的Entry，那么 n 会被设置为table散列数组（即Entry数组）的大小，然后在该处往后进行一段连续段的探测式清理，接着继续回来进行启发式清理。</p>
+<p>如果想深入了解这两种清理方式，可以看JavaGuide中对ThreadLocal的源码分析的文章。</p>
+<h3 id="探测式清理和启发式清理分别是什么时候会发生"><a href="#探测式清理和启发式清理分别是什么时候会发生" class="headerlink" title="探测式清理和启发式清理分别是什么时候会发生"></a>探测式清理和启发式清理分别是什么时候会发生</h3><ul>
+<li>探测式清理：</li>
+</ul>
+<ul>
+<li>在启发式清理、get操作、remove操作中一旦发现需要清理的Entry时就会发生</li>
+<li>rehash方法中会先进行一轮探测式清理</li>
+</ul>
+<ul>
+<li>启发式清理：</li>
+</ul>
+<ul>
+<li>在set操作后会发生</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="ThreadLocalMap扩容机制"><a href="#ThreadLocalMap扩容机制" class="headerlink" title="ThreadLocalMap扩容机制"></a>ThreadLocalMap扩容机制</h2><p>在ThreadLocalMap进行set之后会进行一次启发式清理，清理之后会判断当前散列数组中的Entry数量是否已经达到了扩容阈值，这里的扩容阈值是散列数组大小的2&#x2F;3。如果达到了，下一步就调用rehash方法。</p>
+<p>set方法最后的部分：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">if</span> (!cleanSomeSlots(i, sz) &amp;&amp; sz &gt;= threshold) rehash();</span><br></pre></td></tr></table></figure>
+<p>其中cleanSomeSlots是进行启发式清理，threshold是扩容阈值，值为散列数组大小的2&#x2F;3。</p>
+<p>在rehash方法中会先进行探测性清理，之后再判断Entry数量是否达到了扩容阈值的3&#x2F;4，如果是，就进行扩容。</p>
+<p>reahsh方法：</p>
+<figure class="highlight java"><table><tr><td class="gutter"><pre><span class="line">1</span><br><span class="line">2</span><br><span class="line">3</span><br><span class="line">4</span><br><span class="line">5</span><br><span class="line">6</span><br></pre></td><td class="code"><pre><span class="line"><span class="keyword">private</span> <span class="keyword">void</span> <span class="title function_">rehash</span><span class="params">()</span> &#123;</span><br><span class="line">    expungeStaleEntries();</span><br><span class="line">    <span class="comment">// Use lower threshold for doubling to avoid hysteresis</span></span><br><span class="line">    <span class="keyword">if</span> (size &gt;= threshold - threshold / <span class="number">4</span>)</span><br><span class="line">         resize();</span><br><span class="line">&#125;</span><br></pre></td></tr></table></figure>
+<p>注意两个地方判断的数值是不一样的！</p>
+<ul>
+<li>扩容阈值是散列数组大小的2&#x2F;3，在set之后进行启发式清理，如果之后Entry个数达到扩容阈值会进行rehash</li>
+<li>在rehash中先进行探测式清理，如果之后Entry个数达到扩容阈值的3&#x2F;4就进行扩容</li>
+</ul>
+<p>扩容后的散列表的大小为原本的2倍，然后遍历原本的散列表，将其中的每一个Entry重新计算hash值并放到新的散列表中，处理哈希冲突的方式与之前一样是开放地址法，之后再重新计算新的扩容阈值。</p>
+<p><strong>总结一下ThreadLocalMap的扩容机制：</strong></p>
+<ol>
+<li>在set操作之后，会先进行一次启发式清理</li>
+<li>判断启发式清理后Entry数量是否大于等于扩容阈值（数组大小的 2 &#x2F; 3），如果达到了，再进行一次探测式清理</li>
+<li>判断进行探测式清理之后Entry数量是否大于等于扩容阈值的 3 &#x2F; 4，如果达到了，则将数组大小扩容为原本的两倍，并将元素重新进行哈希。</li>
+</ol>
+<p>&nbsp; </p>
+<h2 id="线程池配合ThreadLocal使用时可能存在的问题"><a href="#线程池配合ThreadLocal使用时可能存在的问题" class="headerlink" title="线程池配合ThreadLocal使用时可能存在的问题"></a>线程池配合ThreadLocal使用时可能存在的问题</h2><p>线程池中的线程有可能被重复利用，而被重复利用的线程如果在被重新使用前没有清理掉ThreadLocal变量的数据，那么在重新使用时可以读取到这个线程在之前使用时ThreadLocal变量中的数据，这个被形象地称为 <strong>“前世记忆”</strong>。</p>
+<p>所以为了避免被前世的记忆干扰今生的行为，最好在使用完ThreadLocal变量后就进行一次remove操作，将ThreadLocal变量清除掉。</p>
+<hr>
+<p>关于Java并发中的ThreadLocal就介绍到这里，在之后的Java并发系列博客中会接着更新关于线程池等与Java并发有关的知识，欢迎阅读。</p>
+<hr>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://snailclimb.gitee.io/javaguide/#/docs/java/concurrent/java-concurrent-questions-02?id=_3-threadlocal">JavaGuide中的一篇文章</a></li>
+<li><a target="_blank" rel="noopener" href="https://snailclimb.gitee.io/javaguide/#/docs/java/concurrent/threadlocal?id=threadlocalmap%e8%bf%87%e6%9c%9f-key-%e7%9a%84%e5%90%af%e5%8f%91%e5%bc%8f%e6%b8%85%e7%90%86%e6%b5%81%e7%a8%8b">JavaGuide中的另一篇文章</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1SJ41157oF?spm_id_from=333.999.0.0">B站up主 free-coder 的一个视频</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/cqqfboy/p/14484263.html">参考文章</a>（写的真的很好，有空可以多看看）</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/04/02-53-08/" title="Java并发（四）ThreadLocal类">https://iamboger.github.io/2024/03/04/02-53-08/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/04/01-42-10/" rel="prev" title="Java并发（三）volatile关键字">
+                  <i class="fa fa-angle-left"></i> Java并发（三）volatile关键字
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/03/04/03-45-39/" rel="next" title="Java并发（五）ConcurrentHashMap如何解决线程安全问题">
+                  Java并发（五）ConcurrentHashMap如何解决线程安全问题 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

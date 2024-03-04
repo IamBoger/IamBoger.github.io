@@ -1,0 +1,439 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="在本Java并发系列前两篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS与Reentrantlock等关于Java并发的内容。 本篇将讲述Java中的volatile关键字。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java并发（三）volatile关键字">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/04/01-42-10/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="在本Java并发系列前两篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS与Reentrantlock等关于Java并发的内容。 本篇将讲述Java中的volatile关键字。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/b324484b82ab43cbb0340781d7f8f775.png">
+<meta property="article:published_time" content="2024-03-03T17:42:10.000Z">
+<meta property="article:modified_time" content="2024-03-03T18:28:54.933Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/b324484b82ab43cbb0340781d7f8f775.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/04/01-42-10/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/04/01-42-10/","path":"2024/03/04/01-42-10/","title":"Java并发（三）volatile关键字"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java并发（三）volatile关键字 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#volatile%E5%85%B3%E9%94%AE%E5%AD%97"><span class="nav-number">1.</span> <span class="nav-text">volatile关键字</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#JVM-%E5%86%85%E5%AD%98%E6%A8%A1%E5%9E%8B"><span class="nav-number">1.1.</span> <span class="nav-text">JVM 内存模型</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%B9%B6%E5%8F%91%E7%BC%96%E7%A8%8B%E7%9A%84%E4%B8%89%E4%B8%AA%E9%87%8D%E8%A6%81%E7%89%B9%E6%80%A7"><span class="nav-number">1.2.</span> <span class="nav-text">并发编程的三个重要特性</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E4%BD%BF%E7%94%A8volatile%E5%85%B3%E9%94%AE%E5%AD%97%E7%9A%84%E4%BD%9C%E7%94%A8"><span class="nav-number">1.3.</span> <span class="nav-text">使用volatile关键字的作用</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#volatile%E5%85%B3%E9%94%AE%E5%AD%97%E4%B8%8Esynchronized%E5%85%B3%E9%94%AE%E5%AD%97%E7%9A%84%E5%8C%BA%E5%88%AB"><span class="nav-number">1.4.</span> <span class="nav-text">volatile关键字与synchronized关键字的区别</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#volatile%E5%85%B3%E9%94%AE%E5%AD%97%E7%9A%84%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="nav-number">1.5.</span> <span class="nav-text">volatile关键字的实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E5%AD%98"><span class="nav-number">1.5.1.</span> <span class="nav-text">缓存</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%BC%93%E5%AD%98%E4%B8%80%E8%87%B4%E6%80%A7%E5%8D%8F%E8%AE%AE"><span class="nav-number">1.5.2.</span> <span class="nav-text">缓存一致性协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E7%AA%A5%E6%8E%A2%E6%8A%80%E6%9C%AF"><span class="nav-number">1.5.3.</span> <span class="nav-text">窥探技术</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#MESI%E5%8D%8F%E8%AE%AE"><span class="nav-number">1.5.4.</span> <span class="nav-text">MESI协议</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#Happens-Before%E5%8E%9F%E5%88%99"><span class="nav-number">1.5.5.</span> <span class="nav-text">Happens-Before原则</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#volatile%E5%86%85%E5%AD%98%E8%AF%AD%E4%B9%89%E7%9A%84%E5%AE%9E%E7%8E%B0%E5%8E%9F%E7%90%86"><span class="nav-number">1.5.6.</span> <span class="nav-text">volatile内存语义的实现原理</span></a></li></ol></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/04/01-42-10/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java并发（三）volatile关键字 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java并发（三）volatile关键字
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2024-03-04 01:42:10 / Modified: 02:28:54" itemprop="dateCreated datePublished" datetime="2024-03-04T01:42:10+08:00">2024-03-04</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/Java%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">Java并发</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>在本Java并发系列前两篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS与Reentrantlock等关于Java并发的内容。</p>
+<p>本篇将讲述Java中的volatile关键字。</p>
+<span id="more"></span>
+
+<h1 id="volatile关键字"><a href="#volatile关键字" class="headerlink" title="volatile关键字"></a>volatile关键字</h1><h2 id="JVM-内存模型"><a href="#JVM-内存模型" class="headerlink" title="JVM 内存模型"></a>JVM 内存模型</h2><p>在了解volatile关键字之前，推荐先阅读<a target="_blank" rel="noopener" href="https://blog.csdn.net/QQ1149646297/article/details/123310967?spm=1001.2014.3001.5502">《JVM 内存模型》</a>了解一下JMM。</p>
+<p><img src="/images/illustration/b324484b82ab43cbb0340781d7f8f775.png" alt="img"></p>
+<p>JMM屏蔽了系统与硬件的差异，避免了一套代码在不同平台下产生的效果不一样。</p>
+<p>在JMM当中，每个线程都有自己私有的<strong>本地内存</strong>，线程无法访问别的线程的本地内存，本地内存往往是使用机器的寄存器、CPU缓存等实现的，性能较高。</p>
+<p>在JDK1.2之前，线程总是从主存中读取共享变量，但是这样做性能会比较差，因为JMM中的主存往往就是使用内存来实现，性能会比寄存器、CPU缓存等差。</p>
+<p>在后来的JDK版本中，<strong>线程可以在本地内存当中存储了主内存中的共享变量的副本，以提高性能。</strong></p>
+<p>但与此同时带来了新的问题，线程把共享变量副本保存在本地内存中，在共享变量副本上的读写操作也是在本地内存上进行，不是直接在主存中进行变量的读写。如果此时还有其它线程在主存中修改了变量的值，而当前线程还继续使用它本地内存中的变量的拷贝值，这就导致了<strong>数据的不一致</strong>。这个问题涉及并发编程的三种重要特性中的<strong>可见性</strong>。</p>
+<p>&nbsp; </p>
+<h2 id="并发编程的三个重要特性"><a href="#并发编程的三个重要特性" class="headerlink" title="并发编程的三个重要特性"></a>并发编程的三个重要特性</h2><ul>
+<li>原子性：一系列操作要么全部执行，要么全部都不执行</li>
+<li>可见性：当一个线程对共享变量进行修改，其它线程可以立即看到修改后的最新值</li>
+<li>有序性：JVM在编译期及运行期会对代码进行优化，可能导致执行顺序与编写顺序不一致，但最终结果不能有变化<br>&nbsp;</li>
+</ul>
+<h2 id="使用volatile关键字的作用"><a href="#使用volatile关键字的作用" class="headerlink" title="使用volatile关键字的作用"></a>使用volatile关键字的作用</h2><ul>
+<li>保证可见性：对变量使用volatile关键字进行修饰，会指示JVM这个变量是共享且不稳定的，每次读取这个变量都需要到主存中去进行访问，而不能直接使用本地内存上的变量的副本。</li>
+<li>保证有序性：对变量使用volatile关键字进行修饰，指示JVM此处禁止对指令进行重排序优化。</li>
+</ul>
+<p>注意，使用volatile关键字无法保证数据的原子性，保证数据的原子性需要使用synchronized关键字来保证。<br>&nbsp; </p>
+<h2 id="volatile关键字与synchronized关键字的区别"><a href="#volatile关键字与synchronized关键字的区别" class="headerlink" title="volatile关键字与synchronized关键字的区别"></a>volatile关键字与synchronized关键字的区别</h2><ul>
+<li>volatile关键字用于修饰变量，synchronized关键字用于修饰方法和代码块</li>
+<li>volatile关键字是线程同步的轻量级实现，性能比synchronized关键字要好</li>
+<li>volatile关键字可以保证可见性、有序性，但不能保证原子性</li>
+<li>synchronized关键字可以保证可见性、原子性，但不能保证有序性<br>&nbsp;</li>
+</ul>
+<h2 id="volatile关键字的实现方式"><a href="#volatile关键字的实现方式" class="headerlink" title="volatile关键字的实现方式"></a>volatile关键字的实现方式</h2><p>这里我倾向于把volatile关键字的实现分两个部分来说，一个是如何实现volatile关键字所带来的可见性，另一个是如何实现volatile关键字所带来的有序性。</p>
+<p><strong>下面先讲关于可见性的实现。</strong></p>
+<p>在此之前需要先简单了解<strong>缓存</strong>。</p>
+<h3 id="缓存"><a href="#缓存" class="headerlink" title="缓存"></a>缓存</h3><p>缓存系统中以缓存行为单位存储。</p>
+<p><strong>读操作：</strong> CPU在执行一条读内存指令时，会将内存中所在的缓存行大小的内容加载进缓存中，一次加载一整个缓存行</p>
+<p><strong>写操作：</strong> 写操作比较复杂，分为两种基本模式</p>
+<ul>
+<li>直写：直接把数据写到内存中，如果对应的段被缓存，则同时更新缓存中的内容或直接丢弃</li>
+<li>回写：缓存不会立即把数据写到内存中，而是仅修改缓存中的数据，并把对应缓存段标记为“脏段”。脏段会触发回写，之后脏段就会变“干净”。当一个脏段被丢弃之前，总是要先进行一次回写。<strong>回写模式中要么缓存段内容与内存一致（缓存段是干净的时候），要么缓存段中的内容最终要回写到内存中（缓存段是脏段）</strong><br>&nbsp;</li>
+</ul>
+<h3 id="缓存一致性协议"><a href="#缓存一致性协议" class="headerlink" title="缓存一致性协议"></a>缓存一致性协议</h3><p>在多核处理器系统中，每个处理器核心都有它们自己的一级缓存、二级缓存等。这样一来当多个处理器核心在对共享的数据进行写操作时，就需要保证该共享数据在所有处理器核心中的可见性&#x2F;一致性。<br><strong>『 窥探技术 + MESI协议 』的出现，就是为了解决多核处理器时代，缓存不一致的问题的。</strong><br>&nbsp; </p>
+<h3 id="窥探技术"><a href="#窥探技术" class="headerlink" title="窥探技术"></a>窥探技术</h3><p>“窥探”背后的基本思想是，所有内存传输都发生在一条共享的总线上，所有处理器都能看到这条总线。缓存本身是独立的，但是内存是共享资源，在同一时间只有一个缓存可以读写内存。<br>窥探技术的思想是，缓存不仅仅在做内存传输时访问总线，还要不停地窥探总线上发生的数据交换，跟踪其它缓存在做什么。当一个缓存去读写内存时，其它处理器都会得到通知，以此来让自己的缓存保持同步。只要某个处理器一写内存，其它处理器立刻知道这块内存在自己的缓存中已经失效。<br>&nbsp; </p>
+<h3 id="MESI协议"><a href="#MESI协议" class="headerlink" title="MESI协议"></a>MESI协议</h3><p>缓存系统操作的最小单位是缓存行，MESI是缓存行四种状态首字母的缩写，任何多核系统中的缓存行都处于这四种状态之一</p>
+<ul>
+<li><strong>M - Modified - 已修改</strong><br>该缓存行已经被所属的处理器修改，它在其它处理器缓存中的拷贝会马上变为Invalid失效状态。此外，如果从已修改状态变为失效状态 (M → I) ，需要先把它的内容写到内存中（即缓存的回写模式下对脏段的处理）</li>
+<li><strong>E - Exclusive - 独占</strong><br>缓存行的内容与主内存内容保持一致的一份拷贝。一个处理器持有E状态的状态行，则其它处理器不能同时持有该缓存行(即如果其它处理器原本持有该缓存行，那么它会变为失效状态)，所以称为“独占”。</li>
+<li><strong>S - Shared - 共享</strong><br>缓存行的内容与主内存内容保持一致的一份拷贝，这种状态下缓存行只能被读取，不能被写入。多组缓存可以同时拥有针对统一内存地址的共享缓存行。</li>
+<li><strong>I - Invalid - 失效</strong><br>处理器缓存中无该缓存行或该缓存行已失效</li>
+</ul>
+<p>只有缓存行处于E或M状态，处理器是独占着该缓存的，这时才能去写它，同时一直窥探着总线，得知是否有其它处理器想读取这个缓存行。<br>如果一个处理器想写某个缓存段但是没独占权，它会发送请求给总线，通知其它处理器把它们同一缓存行的状态改为失效状态（如果原本是M状态就会触发回写）。<br>&nbsp; </p>
+<h3 id="Happens-Before原则"><a href="#Happens-Before原则" class="headerlink" title="Happens-Before原则"></a>Happens-Before原则</h3><p>在上述JMM文章中讲述到了Happens-Before原则。<br>在Happens-Before原则中有一条规则是关于volatile变量的：<br><strong>volatile变量规则：对一个volatile域的写，happens-before于后续对这个volatile域的写。</strong></p>
+<p>happens-before的这个规则会保证volatile写-读具有如下的内存语义：</p>
+<ul>
+<li><strong>volatile写的内存语义：</strong><br>当写一个 volatile 变量时，JMM 会把该线程对应的本地内存中的共享变量值刷新到主内存。</li>
+<li><strong>volatile读的内存语义：</strong><br>当读一个 volatile 变量时，JMM 会把该线程对应的本地内存置为无效。线程接下来将从主内存中读取共享变量。</li>
+</ul>
+<p>也就是说，关于volatile变量的读写都需要直接与主存联系。<br>&nbsp; </p>
+<h3 id="volatile内存语义的实现原理"><a href="#volatile内存语义的实现原理" class="headerlink" title="volatile内存语义的实现原理"></a>volatile内存语义的实现原理</h3><p>以上便是volatile关键字可见性的实现。下面接着讲如何实现有序性</p>
+<p>编译器在生成字节码时，会在指令序列中插入内存屏障(Barrier)来禁止处理器重排序。JVM会根据不同的操作系统插入不同的内存屏障指令。</p>
+<p>JMM把内存屏障指令分为以下四类：</p>
+<table>
+<thead>
+<tr>
+<th>屏障类型</th>
+<th>指令示例</th>
+<th>说明</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>LoadLoad屏障</td>
+<td>Load1;<br>LoadLoad;<br>Load2</td>
+<td>确保Load1数据的装载发生在Load2及所有后续装载指令之前</td>
+</tr>
+<tr>
+<td>StoreStore屏障</td>
+<td>Store1;<br>StoreStore;<br>Store2;</td>
+<td>确保Store1数据对其它处理器可见，即数据刷新到内存发生在Store2及所有后续存储指令之前</td>
+</tr>
+<tr>
+<td>LoadStore屏障</td>
+<td>Load1;<br>LoadStore;<br>Store2;</td>
+<td>确保Load1数据装载发生在Store2及所有后续的存储指令刷新到内存之前</td>
+</tr>
+<tr>
+<td>StoreLoad屏障</td>
+<td>Store1;<br>StoreLoad;<br>Load2</td>
+<td>确保Store1数据对其它处理器可见，即数据刷新点到内存发生在Load2及所有后续装载指令的装载之前。StoreLoad屏障会使该屏障之前的所有内存访问指令（存储和装载指令）完成之后，才执行该屏障之后的内存访问指令</td>
+</tr>
+</tbody></table>
+<p>下面是基于保守策略的JMM内存屏障插入策略：</p>
+<ul>
+<li>在每个volatile写操作的前面插入一个StoreStore屏障。</li>
+<li>在每个volatile写操作的后面插入一个StoreLoad屏障。</li>
+<li>在每个volatile读操作的后面插入一个LoadLoad屏障。</li>
+<li>在每个volatile读操作的后面插入一个LoadStore屏障。</li>
+</ul>
+<p>上述内存屏障插入策略非常保守，但它可以保证在任意处理器平台，任意的程序中都能得到正确的volatile内存语义。由于不同的处理器有不同“松紧度”的处理器内存模型，内存屏障的插入还可以根据具体的处理器内存模型继续优化。<br>&nbsp;<br><strong>在x86处理器上实现volatile的内存语义</strong></p>
+<p>在x86处理器中，JMM仅需在volatile写后面插入一个StoreLoad屏障即可正确实现volatile写-读语义。这是因为x86不会对读-读，读-写，写-写三种操作做指令重排序，因此在x86处理器中可以省略掉这三种操作类型对应的内存屏障。</p>
+<hr>
+<p>关于Java并发中的volatile关键字就介绍到这里，在后续的Java并发系列博客中还包含关于ThreadLocal、线程池等与Java并发有关的知识，欢迎继续阅读。</p>
+<hr>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://snailclimb.gitee.io/javaguide/#/docs/java/concurrent/java-concurrent-questions-02?id=_2-volatile-%e5%85%b3%e9%94%ae%e5%ad%97">JavaGuide中的一篇文章</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/bd68ddf91240">参考文章</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/04/01-42-10/" title="Java并发（三）volatile关键字">https://iamboger.github.io/2024/03/04/01-42-10/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/03/23-08-57/" rel="prev" title="Java并发（二）AQS、Reentrantlock">
+                  <i class="fa fa-angle-left"></i> Java并发（二）AQS、Reentrantlock
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/03/04/02-53-08/" rel="next" title="Java并发（四）ThreadLocal类">
+                  Java并发（四）ThreadLocal类 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

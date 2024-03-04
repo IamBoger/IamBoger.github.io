@@ -1,0 +1,415 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="在本Java并发系列博客的前四篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS、Reentrantlock、volatile关键字、ThreadLocal类等关于Java并发的内容。 本篇将讲述Java中的ConcurrentHashMap是如何解决线程安全问题的，分JDK1.7和JDK1.8两个版本来介绍。 前言HashMap是用于存储存在映射关系的键值对的集合，但是HashMap是">
+<meta property="og:type" content="article">
+<meta property="og:title" content="Java并发（五）ConcurrentHashMap如何解决线程安全问题">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/04/03-45-39/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="在本Java并发系列博客的前四篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS、Reentrantlock、volatile关键字、ThreadLocal类等关于Java并发的内容。 本篇将讲述Java中的ConcurrentHashMap是如何解决线程安全问题的，分JDK1.7和JDK1.8两个版本来介绍。 前言HashMap是用于存储存在映射关系的键值对的集合，但是HashMap是">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/a0d47d93d26441f99ec52aa74335e7d7.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/6107f3868dc64190bac7228d24bc702d-20240304035300620.png">
+<meta property="article:published_time" content="2024-03-03T19:45:39.000Z">
+<meta property="article:modified_time" content="2024-03-03T20:05:51.417Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/a0d47d93d26441f99ec52aa74335e7d7.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/04/03-45-39/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/04/03-45-39/","path":"2024/03/04/03-45-39/","title":"Java并发（五）ConcurrentHashMap如何解决线程安全问题"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>Java并发（五）ConcurrentHashMap如何解决线程安全问题 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%89%8D%E8%A8%80"><span class="nav-number">1.</span> <span class="nav-text">前言</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#JDK1-7%E4%B8%AD%E7%9A%84ConcurrentHashMap"><span class="nav-number">2.</span> <span class="nav-text">JDK1.7中的ConcurrentHashMap</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#JDK1-8%E4%B8%AD%E7%9A%84ConcurrentHashMap"><span class="nav-number">3.</span> <span class="nav-text">JDK1.8中的ConcurrentHashMap</span></a></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">19</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">4</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/04/03-45-39/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="Java并发（五）ConcurrentHashMap如何解决线程安全问题 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          Java并发（五）ConcurrentHashMap如何解决线程安全问题
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2024-03-04 03:45:39 / Modified: 04:05:51" itemprop="dateCreated datePublished" datetime="2024-03-04T03:45:39+08:00">2024-03-04</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/Java%E5%B9%B6%E5%8F%91/" itemprop="url" rel="index"><span itemprop="name">Java并发</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>在本Java并发系列博客的前四篇文章中，讲述了关于Java锁机制、乐观锁和悲观锁以及AQS、Reentrantlock、volatile关键字、ThreadLocal类等关于Java并发的内容。</p>
+<p>本篇将讲述Java中的ConcurrentHashMap是如何解决线程安全问题的，分JDK1.7和JDK1.8两个版本来介绍。</p>
+<h1 id="前言"><a href="#前言" class="headerlink" title="前言"></a>前言</h1><p><strong>HashMap</strong>是用于存储存在映射关系的键值对的集合，但是HashMap是线程不安全的，在并发环境下会出现脏读脏写的问题，在JDK1.7版本的HashMap中甚至会出现著名的环形链表的问题，不过环形链表在JDK1.8中由于将头插法改为尾插法而被解决了。</p>
+<p>关于HashMap在并发下出现的问题在本文不做详细介绍，不过有一个视频我也推荐大家看看，<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1z54y1i73r?spm_id_from=333.999.header_right.fav_list.click">视频链接点这里</a>，我觉得这个视频把HashMap出现死循环的过程讲的特别清楚，值得一看（补充：JDK1.7的HashMap产生环形链表的条件包含1️⃣HashMap进行扩容2️⃣多线程环境下）。</p>
+<p><strong>HashTable</strong>这个集合解决了HashMap的线程安全问题，但是它的解决方法是简单粗暴的，直接在每个get&#x2F;put方法上用synchronized进行修饰，这样操作的效率是低下的，每当有一个线程正在使用HashTable时，就会把整个散列表都锁住，其它线程若想操作HashTable则都会被阻塞。因此现在基本上都不推荐使用HashTable来解决HashMap的线程安全问题。</p>
+<p>下面开始说我们本期的主角：<strong>ConcurrentHashMap</strong>。<br>ConcurrentHashMap是JUC包中的一个类，概括来说就是一个能够使元素同步的HashMap。在JDK1.7和JDK1.8中，ConcurrentHashMap的实现方式差别很大，本文会将这两个版本下ConcurrentHashMap的不同实现方式都讲讲。</p>
+<p>&nbsp; </p>
+<span id="more"></span>
+
+<h1 id="JDK1-7中的ConcurrentHashMap"><a href="#JDK1-7中的ConcurrentHashMap" class="headerlink" title="JDK1.7中的ConcurrentHashMap"></a>JDK1.7中的ConcurrentHashMap</h1><p>上文说到HashTable解决线程安全问题是通过将整个散列表加锁来实现的，这样做效率较低。JDK1.7下ConcurrentHashMap的解决思想将散列表分别多个段，进而使用分段锁，来降低锁的粒度（锁粒度越小事务的并行度越高）。可以参考下图：<br><img src="/images/illustration/a0d47d93d26441f99ec52aa74335e7d7.png" alt="img"><br>ConcurrentHashMap内部维护一个<strong>Segment</strong>(段)数组，该Segment数组中的每一个元素是一个<strong>HashEntry</strong>数组，而HashEntry的结构与HashMap基本一致。</p>
+<p><strong>Segment继承了Reentrantlock</strong>（关于Reentrantlock，在我的Java并发专栏中的文章已提到了，有兴趣可以看看），意味着每个Segment对象就是一把锁，而每个Segment对象内部都存储着一个HashEntry数组，也就是说该HashEntry数组中的数据同步依赖于该Segment对象这一把锁，这就形成了<strong>分段锁</strong>。</p>
+<p>设ConcurrentHashMap中的Segment数组的长度为n，相较于HashTable，也就是说ConcurrentHashMap将散列表分成了n段，那么性能就提升了n倍。<strong>但实际上，ConcurrentHashMap本身还对锁进行了优化，使得性能达到了n倍以上。</strong> 是怎么优化的呢？</p>
+<p>设现在线程A正在修改一个HashEntry数组中的数据，此时线程B也想尝试在HashEntry数组中进行put操作，但是这时候线程A已经独占了这个锁，所以线程B只能等待或者重试，但与其让线程B干等或不断重试，ConcurrentHashMap改为<strong>让线程B在重试的过程当中提前依据put操作中的key和value去完成HashEntry键值对节点的创建。</strong></p>
+<p>其实这里存在一个问题，如果线程B在获取到锁时发现锁被占用，它在等待过程中先进行了HashEntry键值对节点的初始化之后，获取到了锁，此时发现了在原本的散列表中已经存在了当前key的键值对节点，那我们这个新创建的HashEntry键值节点对不就浪费了吗？其实这是一种 <strong>“预创建”</strong> 的思想，与其让线程在原地干等，还不如让它先去把可能需要用到的工作（在这里指创建一个HashEntry键值对节点）做了，以防在后面发现了不存在当前key的键值对时可以直接使用该新建的HashEntry键值对节点。</p>
+<p>在JDK1.7中ConcurrentHashMap的扩容方面，<strong>Segment数组一旦初始化后就不会再进行扩容，而HashEntry是可以进行扩容的</strong>，扩容原理与HashMap一致，且该扩容操作是在put方法中发生的，而put操作已经被使用锁保证了线程安全，所以也保证了扩容的线程安全。</p>
+<p><strong>对JDK1.7中ConcurrentHashMap的总结：</strong></p>
+<ol>
+<li>使用<strong>分段锁</strong>，<strong>Segment继承于Reentrantlock</strong>，将每个Segment对象作为锁，每个Segment对象中有一个HashEntry数组</li>
+<li>Segment数组经初始化后<strong>不再扩容</strong>，HashEntry数组<strong>可扩容</strong></li>
+<li>使用<strong>预创建</strong>的思想，当线程要进行put操作而获取锁时发现锁被占用，会先进行对节点的创建，以避免线程处于空闲状态</li>
+<li>扩容是在HashEntry中的put方法中进行，而当前HashEntry已经使用了Segment对象作为锁来确保线程安全，进而确保了扩容的线程安全<br>&nbsp;</li>
+</ol>
+<h1 id="JDK1-8中的ConcurrentHashMap"><a href="#JDK1-8中的ConcurrentHashMap" class="headerlink" title="JDK1.8中的ConcurrentHashMap"></a>JDK1.8中的ConcurrentHashMap</h1><p>HashMap在JDK1.8版本中引入了<strong>红黑树</strong>的结构，在JDK1.8版本的ConcurrentHashMap中也引入了<strong>红黑树</strong>的结构。关于红黑树这种数据结构可以看我之前写的这篇文章<a target="_blank" rel="noopener" href="https://blog.csdn.net/QQ1149646297/article/details/123481084?spm=1001.2014.3001.5501">《红黑树 图解快速入门》</a>来了解。</p>
+<p><img src="/images/illustration/6107f3868dc64190bac7228d24bc702d-20240304035300620.png" alt="img"></p>
+<p>当冲突链表个数增大到 <strong>8</strong> 个时，就会将链表转化为红黑树结构，以提高查询效率。当红黑树节点个数小于 <strong>6</strong> 个时，就会将红黑树转化回链表的结构。</p>
+<p>在结构上，JDK1.8中的ConcurrentHashMap由JDK1.7中的<strong>Segment数组 + HashEntry数组 + 链表</strong> 进化为 <strong>Node数组 + 链表 &#x2F; 红黑树</strong> 的结构。其中Node数组中的每一个Node对象也即存储了键值对的信息。</p>
+<p>在解决线程安全方面，简单来说，相较于JDK1.7，JDK1.8不再使用分段加锁的操作，而是直接<strong>在散列表中每一个链表的头节点上进行加锁</strong>，进一步缩小了锁的粒度。同时在JDK1.7中是使用继承了Reentrantlock的Segment对象作为锁来进行加锁操作，而JDK1.8中是直接<strong>在节点上使用CAS或者Synchronized关键字修饰</strong>来进行并发控制。（关于CAS和Synchronized关键字在我的Java并发专栏之前的文章中已经讲述过了，有兴趣可以看看）</p>
+<p>ConcurrentHashMap中有一个比较关键的属性<code>sizeCtl</code>，这个属性的不同值代表ConcurrentHashMap目前处于不同的状态：</p>
+<ol>
+<li>-1 说明正在初始化</li>
+<li>-N 说明有N-1个线程正在进行扩容</li>
+<li>表示 table 初始化大小，如果 table 没有初始化</li>
+<li>表示 table 容量，如果 table 已经初始化。</li>
+</ol>
+<p>在ConcurrentHashMap初始化操作中，<strong>使用CAS进行初始化，以防同时与其它线程对当前ConcurrentHashMap进行了初始化。</strong></p>
+<p>下面讲JDK1.8中ConcurrentHashMap的put操作与get操作。</p>
+<p>在此之前，需要注意：<strong>ConcurrentHashMap中键值对的key和value不能为null</strong>，因为如果key和value可以为null，会出现<strong>二义性问题</strong>。<br>当通过一个key获取到的value为null时，我们没法知道是不存在这个键值对还是存在value为null的键值对，这就产生了<strong>二义性问题</strong>。<br>在HashMap中，key和value都可以是null。当获取到的value为null，我们可以通过containsKey方法来判断是否存在这个键值对。<br>但是在ConcurrentHashMap中，当获取到的value为null，我们再去调用containsKey方法，但这个过程没法确保是否刚好有别的线程把查询的对象加入到集合中或者把它删除掉，所以为了避免二义性问题，ConcurrentHashMap不允许key和value为null。</p>
+<p><strong>在put操作中的流程：</strong></p>
+<ol>
+<li>判断key和value是否为null，如果是则报错。</li>
+<li>判断当前ConcurrentHashMap是否需要进行初始化，如果当前ConcurrentHashMap为空，则使用CAS进行初始化</li>
+<li>依据当前key定位出Node的位置，如果当前位置为空，则使用<strong>CAS</strong>在当前位置尝试加入Node，失败则进行自旋保证成功</li>
+<li>如果当前位置不为空，判断当前位置是否有其它线程正在进行扩容，如果有则当前线程进入协助扩容阶段</li>
+<li>如果当前位置不为空且无其它线程在进行扩容，则使用<strong>synchronized</strong>关键字对当前位置的头节点加锁后，进行数据修改</li>
+<li>如果当前位置的节点是链表结构，则遍历链表找是否有key相同的元素，有则修改value，无则在最后插入新链表节点，然后判断当前链表中的节点个数是否超过了树化阈值（这个阈值是<strong>TREEIFY_THRESHOLD</strong>，是相对链表节点个数而言，值为<strong>8</strong>），如果超过，则考虑将链表转化为红黑树</li>
+<li>如果当前链表中的节点个数超过了树化阈值，会调动treeifyBin方法，然后看当前散列表数组的大小是否小于最小树化阈值（这个阈值是<strong>MIN_TREEIFY_CAPACITY</strong>，是相对散列表个数而言，值为<strong>64</strong>），如果小于它，则不进行改造为红黑树，而是将散列表数组容量扩大为两倍，然后重新调节节点位置</li>
+<li>如果当前位置的节点是红黑树结构，则按照红黑树的插入规则进行新节点的插入</li>
+<li>新节点插入之后节点数量 + 1，判断ConcurrentHashMap是否需要进行扩容</li>
+</ol>
+<p><strong>在get操作中的流程：</strong></p>
+<ol>
+<li>根据 hash 值计算位置。</li>
+<li>查找到指定位置，如果头节点就是要找的，直接返回它的 value.</li>
+<li>如果头节点 hash 值小于 0 ，说明此处正在扩容或者此处是红黑树，查找之。</li>
+<li>如果是链表，遍历查找之。</li>
+</ol>
+<p>什么时候会发生<strong>扩容</strong>？</p>
+<ol>
+<li>新增节点后链表节点数达到了8个但是散列表数组长度小于64，这时不会选择将链表转化为红黑树而是将散列表数组大小变为2倍，调用<strong>tryPresize</strong>方法。</li>
+<li>新增节点后当前数组中的总元素个数达到了扩容阈值，则进行扩容，调用<strong>transfer</strong>方法。</li>
+<li>当调用了putAll方法时，发现当前容量不足以存放所有的元素，则进行扩容。</li>
+</ol>
+<p>JDK1.8中ConcurrentHashMap扩容机制比较复杂，内容较多，大家可以参考这篇文章<a target="_blank" rel="noopener" href="https://blog.csdn.net/ZOKEKAI/article/details/90051567?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522159195403419725247635528%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fall.%2522%257D&request_id=159195403419725247635528&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~first_rank_v2~rank_v25-2-90051567.first_rank_v2_rank_v25&utm_term=concurrenthashmap%E6%89%A9%E5%AE%B9%E6%98%AF%E5%A4%B4%E6%8F%92%E6%B3%95">《ConcurrentHashMap1.8 - 扩容详解》</a>，里面有图解扩容。</p>
+<p><strong>对JDK1.8中ConcurrentHashMap的总结：</strong></p>
+<ol>
+<li>引入了<strong>红黑树</strong>的数据结构，且不再使用分段锁，改用Node数组</li>
+<li>直接在散列表的每个头节点上<strong>使用CAS进行创建头节点</strong>或者<strong>使用synchronized关键字加锁</strong></li>
+<li>当在put操作中发现需要进行初始化时，使用CAS进行初始化</li>
+<li>扩容时可能会有<strong>多个线程参与扩容</strong></li>
+<li><strong>key和value不能为null</strong>，目的是在于避免<strong>二义性问题</strong></li>
+</ol>
+<hr>
+<p>参考：</p>
+<ol>
+<li>B站up主寒食君的视频：<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1FX4y1g7uC?spm_id_from=333.999.0.0">视频链接</a></li>
+<li>B站up主图灵官方诸葛的视频：<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1z54y1i73r?spm_id_from=333.999.header_right.fav_list.click">视频链接</a></li>
+<li><a target="_blank" rel="noopener" href="https://snailclimb.gitee.io/javaguide/#/docs/java/collection/concurrent-hash-map-source-code?id=_2-concurrenthashmap-18">JavaGuide中的一篇文章</a> </li>
+<li><a target="_blank" rel="noopener" href="https://blog.csdn.net/zzu_seu/article/details/106698150">参考文章1</a>、<a target="_blank" rel="noopener" href="https://blog.csdn.net/ZOKEKAI/article/details/90051567?ops_request_misc=%257B%2522request%255Fid%2522%253A%2522159195403419725247635528%2522%252C%2522scm%2522%253A%252220140713.130102334.pc%255Fall.%2522%257D&request_id=159195403419725247635528&biz_id=0&utm_medium=distribute.pc_search_result.none-task-blog-2~all~first_rank_v2~rank_v25-2-90051567.first_rank_v2_rank_v25&utm_term=concurrenthashmap%E6%89%A9%E5%AE%B9%E6%98%AF%E5%A4%B4%E6%8F%92%E6%B3%95">参考文章2</a>（这2篇博客文章讲得特别细，写得很用心，有时间可以看看）</li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/04/03-45-39/" title="Java并发（五）ConcurrentHashMap如何解决线程安全问题">https://iamboger.github.io/2024/03/04/03-45-39/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/04/02-53-08/" rel="prev" title="Java并发（四）ThreadLocal类">
+                  <i class="fa fa-angle-left"></i> Java并发（四）ThreadLocal类
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/03/04/04-17-33/" rel="next" title="Java并发（六）线程池入门">
+                  Java并发（六）线程池入门 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
