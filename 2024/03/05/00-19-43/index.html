@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="本篇是JVM专栏的第三篇，本篇将带你入门学习JVM中的内存结构。  JVM中的内存结构和内存模型都是对物理内存的抽象，只是抽象划分有些不同。不要混淆JVM中的内存结构和内存模型！JVM的内存模型请看这里本JVM专栏中的第二篇文章。 JVM内存结构：  线程独占：程序计数器、虚拟机栈、本地方法栈  线程共享：方法区、堆">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JVM 内存结构">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/05/00-19-43/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="本篇是JVM专栏的第三篇，本篇将带你入门学习JVM中的内存结构。  JVM中的内存结构和内存模型都是对物理内存的抽象，只是抽象划分有些不同。不要混淆JVM中的内存结构和内存模型！JVM的内存模型请看这里本JVM专栏中的第二篇文章。 JVM内存结构：  线程独占：程序计数器、虚拟机栈、本地方法栈  线程共享：方法区、堆">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/626d9213f353497bb286dc7a95d787f1.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/2a9a4d4e9f664a43bf132964b89fe4c1.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/b92f33920b254b3b8e4462fefc236644-20240305002356387.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/9bfae89d82c34bdfab25ace88d7ed06e-20240305002402191.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/b0ef5df7069042ad865c025f45d1fa82.png">
+<meta property="article:published_time" content="2024-03-04T16:19:43.000Z">
+<meta property="article:modified_time" content="2024-03-04T17:56:20.297Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/626d9213f353497bb286dc7a95d787f1.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/05/00-19-43/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/05/00-19-43/","path":"2024/03/05/00-19-43/","title":"JVM 内存结构"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>JVM 内存结构 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E7%A8%8B%E5%BA%8F%E8%AE%A1%E6%95%B0%E5%99%A8"><span class="nav-number">1.</span> <span class="nav-text">程序计数器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E8%99%9A%E6%8B%9F%E6%9C%BA%E6%A0%88"><span class="nav-number">2.</span> <span class="nav-text">虚拟机栈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%9C%AC%E5%9C%B0%E6%96%B9%E6%B3%95%E6%A0%88"><span class="nav-number">3.</span> <span class="nav-text">本地方法栈</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%96%B9%E6%B3%95%E5%8C%BA"><span class="nav-number">4.</span> <span class="nav-text">方法区</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%A0%86"><span class="nav-number">5.</span> <span class="nav-text">堆</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E6%A0%88%E4%B8%8A%E5%88%86%E9%85%8D%E5%92%8CTLAB"><span class="nav-number">6.</span> <span class="nav-text">栈上分配和TLAB</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E4%B8%8A%E5%88%86%E9%85%8D"><span class="nav-number">6.1.</span> <span class="nav-text">栈上分配</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#TLAB"><span class="nav-number">6.2.</span> <span class="nav-text">TLAB</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E6%A0%88%E4%B8%8A%E5%88%86%E9%85%8D%E5%92%8CTLAB%E5%AF%B9%E6%AF%94"><span class="nav-number">6.3.</span> <span class="nav-text">栈上分配和TLAB对比</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/05/00-19-43/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="JVM 内存结构 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          JVM 内存结构
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2024-03-05 00:19:43 / Modified: 01:56:20" itemprop="dateCreated datePublished" datetime="2024-03-05T00:19:43+08:00">2024-03-05</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本篇是JVM专栏的第三篇，本篇将带你入门学习JVM中的内存结构。</p>
+<hr>
+<p>JVM中的内存结构和内存模型都是对物理内存的抽象，只是抽象划分有些不同。<br>不要混淆JVM中的内存结构和内存模型！JVM的内存模型请看这里本JVM专栏中的第二篇文章。</p>
+<p>JVM内存结构：</p>
+<ul>
+<li><p><strong>线程独占</strong>：程序计数器、虚拟机栈、本地方法栈</p>
+</li>
+<li><p><strong>线程共享</strong>：方法区、堆</p>
+<img src="/images/illustration/626d9213f353497bb286dc7a95d787f1.png" alt="img" style="zoom:67%;" /></li>
+</ul>
+<span id="more"></span>
+
+<h2 id="程序计数器"><a href="#程序计数器" class="headerlink" title="程序计数器"></a>程序计数器</h2><p>存储字节码的指定地址，提供给执行引擎去取指令来执行，这是唯一一个不会发生OOM(OutOfMemory)的地方。</p>
+<p>&nbsp; </p>
+<h2 id="虚拟机栈"><a href="#虚拟机栈" class="headerlink" title="虚拟机栈"></a>虚拟机栈</h2><p>虚拟机栈中由栈帧构成。栈帧中主要存在四种结构：局部变量表、操作数栈、动态链接、返回地址。</p>
+<ul>
+<li><p>局部变量表：栈帧是通过方法源码来生成的。调用方法时，传入方法的参数类型、局部变量类型在源码中都是已经确定的，既然数量和类型已确定，那么占用的空间就确定。</p>
+</li>
+<li><p>操作数栈：用来存储操作数的栈，操作数大部分是方法中的变量。关于操作数栈还存在一个小优化，由于一个方法的返回值经常作为另一个方法中操作数，所以当一个方法调用另一个方法时，调用方法的栈帧中的操作数会和被调用方法的局部变量表地的部分重叠，这样在进行方法调用时可以共享一部分数据而无需进行额外的参数复制传递</p>
+<img src="/images/illustration/2a9a4d4e9f664a43bf132964b89fe4c1.png" alt="img" style="zoom: 67%;" />
+</li>
+<li><p>动态链接：每个栈帧都包含一个指向运行时常量池中该栈帧所属方法的引用，持有这个引用是为了支持方法调用过程中的动态链接（Dynamic Linking）</p>
+</li>
+<li><p>返回地址：正常情况为返回值，异常情况则抛出异常</p>
+</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="本地方法栈"><a href="#本地方法栈" class="headerlink" title="本地方法栈"></a>本地方法栈</h2><p>用来支持本地(native)方法的调用逻辑<br>&nbsp; </p>
+<h2 id="方法区"><a href="#方法区" class="headerlink" title="方法区"></a>方法区</h2><p>方法区是虚拟机中的抽象概念，不论是什么虚拟机，在具体实现中必须要存在方法区这个结构。规范好比是一座房子的图纸，其中该规定了必须有书房这个房间，建造商在拿到图纸后，需要在限定的条件下去设计这个书房，如何设计建造，就是具体的实现方式。</p>
+<p>HotSpot中，在JDK8之前使用永久代来实现方法区，JDK8之后使用元空间来实现方法区。方法区是抽象，永久代和元空间是实现。</p>
+<p><strong>使用永久代实现方法区的缺点：</strong></p>
+<ol>
+<li><strong>可能引起内存溢出</strong><br>永久代的大小设置为多少，可以通过启动参数指定，但其中的存储数据大小是动态变化的，阈值设置太小容易出现类频繁卸载或者内存溢出问题，设置太大则容易出现空间浪费</li>
+<li><strong>永久代本身的复杂设计并不是方法区需要的，可能带来未知异常。</strong><br>永久代内的对象不是内存连续的，需要通过额外的存储信息以及实现额外的对象查找机制来定位对象。</li>
+</ol>
+<p><strong>方法区内存储的信息：</strong></p>
+<p>方法区中有<strong>类的信息：</strong><br>在类加载阶段，虚拟机将会读取被编译的Class文件生成Class对象，Class对象存储了一些类型信息，而这些类型信息就是存储在方法区中，被转化为某种<strong>静态数据结构</strong>，这些类型信息有属性、方法等。</p>
+<p>方法区中有<strong>运行时常量池</strong>，运行时常量池主要存储两大类数据：</p>
+<ol>
+<li>第一种是<strong>编译期</strong>产生的，主要是字节码中定义的静态信息，比如由字节码生成的class对象或者字节码生成的字面量（即我们在编写代码时定义的常量变量）</li>
+<li>第二种是<strong>运行时期</strong>产生的，这些比较灵活，比如说运行时会把一些符号引用转变为直接引用，而这些转变后的直接引用就可以存储起来；<strong>还有常见的字符串常量池</strong>。</li>
+</ol>
+<p>在方法区存储的方法信息中有一个叫做<strong>LineNumberTable</strong>的变量，数据格式是line xx: xx的形式，表示的是源码行数和字节码index中的映射。我们在debug时，程序能够精准地停留在源码的断点处，但是程序运行的是字节码，断点的所在行是源码，他们就是使用这个LineNumberTable来对应的。</p>
+<p><strong>方法区的垃圾回收：</strong><br>方法区的数据大部分需要稳定使用，一般不关注该区域的垃圾回收。但这并不意味着完全不需要垃圾回收，当方法区的内存占用到一定阈值，也会进行GC。<br>会进行垃圾回收的信息比如有当内存紧张时，可以对小部分类进行卸载，等以后需要这些类时再重新加载。内存紧张时字符串常量池也会进行垃圾回收。</p>
+<p><strong>JDK8以前和JDK8及以后内存结构的变化</strong><br><img src="/images/illustration/b92f33920b254b3b8e4462fefc236644-20240305002356387.png" alt="img"></p>
+<p><img src="/images/illustration/9bfae89d82c34bdfab25ace88d7ed06e-20240305002402191.png" alt="img"></p>
+<p>在JDK8之前，常量池与静态变量是存储在永久代中。在JDK8中，常量池、静态变量逻辑上仍然是属于方法区，只是它们物理上改为存储在了堆中。注意，这里的常量池包含运行时常量池以及字符串常量池（其实字符串常量池在是属于运行时常量池的）。</p>
+<p>&nbsp; </p>
+<h2 id="堆"><a href="#堆" class="headerlink" title="堆"></a>堆</h2><p>堆中大部分存储的是对象。关于堆的内容主要是涉及垃圾回收！关于垃圾回收的内容可以观看这篇文章：<a target="_blank" rel="noopener" href="https://blog.csdn.net/QQ1149646297/article/details/123316771">《JVM 垃圾回收》</a>。</p>
+<p>&nbsp; </p>
+<h2 id="栈上分配和TLAB"><a href="#栈上分配和TLAB" class="headerlink" title="栈上分配和TLAB"></a>栈上分配和TLAB</h2><h3 id="栈上分配"><a href="#栈上分配" class="headerlink" title="栈上分配"></a>栈上分配</h3><p>JVM提供了一种叫做栈上分配的概念，针对那些<strong>作用域不会逃逸出方法的对象</strong>，在分配内存时不再将对象分配在堆内存中，而是将对象属性<strong>打散后分配在栈（线程私有的，属于栈内存）上</strong>，这样，随着方法的调用结束，栈空间的回收就会伴随着将栈上分配的打散后的对象回收掉，不再给gc增加额外的无用负担，从而提升应用程序整体的性能</p>
+<p><strong>逃逸分析</strong>：</p>
+<ul>
+<li>当一个对象在方法中被定义后，对象只在方法内部使用，则认为没有发生逃逸。</li>
+<li>当一个对象在方法中被定义后，它被外部方法所引用，则认为发生逃逸。例如作为调用参数传递到其他地方中。</li>
+</ul>
+<p>附上个人理解：<br>栈上分配：当对象进行<strong>逃逸分析</strong>得出对象的作用域只在定义的方法中被使用时，则该对象没有发生逃逸，则该对象可以被分配在线程独占的栈上。</p>
+<h3 id="TLAB"><a href="#TLAB" class="headerlink" title="TLAB"></a>TLAB</h3><p>TLAB：Thread Local Allocation Buffer 本地分配缓存</p>
+<p>对象分配在堆上，而<strong>堆是一个全局共享</strong>的区域，<strong>当多个线程同一时刻操作堆内存分配对象空间时</strong>，就需要进行同步，而同步带来的效果就是对象分配效率变差（尽管JVM采用了CAS的形式处理分配失败的情况），但是对于存在竞争激烈的分配场合仍然会导致效率变差。</p>
+<p>那么能不能构造一种线程私有的堆空间，哪怕这块堆空间特别小，但是只要有，就可以每个线程在分配对象到堆空间时，先分配到自己所属的那一块堆空间中，<strong>避免同步</strong>带来的效率问题，从而<strong>提高分配效率</strong>？</p>
+<p>需要TLAB的原因就是提高对象在堆上的分配效率而采用的一种手段，就是给<strong>每个线程分配一小块私有的堆空间</strong>，即TLAB是一块线程私有的堆空间（实际上是<strong>Eden区</strong>中划出的）</p>
+<p>我一开始一直不明白TLAB和JMM中线程本地内存的关系。<br>然后我阅读到了这篇文章：<a target="_blank" rel="noopener" href="https://www.cnblogs.com/xuzekun/p/7586765.html%E3%80%82">https://www.cnblogs.com/xuzekun/p/7586765.html。</a><br>工作内存(即线程的本地内存)并不是在内存中分配一块空间给线程，而是cache和寄存器的一个<strong>抽象</strong>。<br>为了加速对象的分配，JVM确实会为每个线程分配一块内存，这块内存称为<strong>TLAB</strong>。这下就能大概理解本地内存和TLAB的关系了。</p>
+<h3 id="栈上分配和TLAB对比"><a href="#栈上分配和TLAB对比" class="headerlink" title="栈上分配和TLAB对比"></a>栈上分配和TLAB对比</h3><table>
+<thead>
+<tr>
+<th>名称</th>
+<th>针对点</th>
+<th>处于对象分配流程的位置</th>
+</tr>
+</thead>
+<tbody><tr>
+<td>栈上分配</td>
+<td>避免gc无谓负担</td>
+<td>1</td>
+</tr>
+<tr>
+<td>TLAB</td>
+<td>加速堆上对象的分配</td>
+<td>2</td>
+</tr>
+</tbody></table>
+<p><img src="/images/illustration/b0ef5df7069042ad865c025f45d1fa82.png" alt="在这里插入图片描述"></p>
+<hr>
+<p>参考：</p>
+<ol>
+<li>B站up主 寒食君 讲述JVM内存结构的视频：<a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV15f4y1A7S3?spm_id_from=333.999.0.0">视频链接</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.jianshu.com/p/f1e5e03ed2f8">参考文章1</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.cnblogs.com/xuzekun/p/7586765.html">参考文章2</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/05/00-19-43/" title="JVM 内存结构">https://iamboger.github.io/2024/03/05/00-19-43/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/04/23-58-22/" rel="prev" title="JVM 内存模型">
+                  <i class="fa fa-angle-left"></i> JVM 内存模型
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/03/05/01-58-38/" rel="next" title="JVM 垃圾回收">
+                  JVM 垃圾回收 <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>

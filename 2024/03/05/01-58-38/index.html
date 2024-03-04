@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="本篇是JVM专栏的第四篇，将带你入门学习JVM中的垃圾回收机制，内容包含Java中的四种引种、多种类型的GC算法和垃圾回收器等。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="JVM 垃圾回收">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/05/01-58-38/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="本篇是JVM专栏的第四篇，将带你入门学习JVM中的垃圾回收机制，内容包含Java中的四种引种、多种类型的GC算法和垃圾回收器等。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/7c263468298748e5955c0b63b651a2cb.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/aa2faf728a7b4d09b2388ade81d25262-20240305020051559.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/e965a0fa56764b11a4a16c37033dd37b.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/424423dcf5c84bc1bb709db9fc9cfffe.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/b23bf26fe07a4847afce8a0fe9dddd2a.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/31eb36fefbc348e3b66a7627d3ae37b8.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/a796d13006a948929644ca39ec242f57.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/f19184a71a8d4356adeab3d8de0fdace.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/2ab4743eadf747bc9a8d769824383547.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/fb5e9c1eab48448387563a3ea2fe081b.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/ece5f8591a3a40edb0403d621db27012.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/93f8e06a27c040d09b670e33936dca7d.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/50933ebaa389497aa730ff6220f2cd7c.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/4974dd376d6e45aba64ebc35debb5e12.png">
+<meta property="article:published_time" content="2024-03-04T17:58:38.000Z">
+<meta property="article:modified_time" content="2024-03-04T18:07:26.876Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/7c263468298748e5955c0b63b651a2cb.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/05/01-58-38/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/05/01-58-38/","path":"2024/03/05/01-58-38/","title":"JVM 垃圾回收"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>JVM 垃圾回收 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%A6%82%E4%BD%95%E5%88%A4%E6%96%AD%E5%AF%B9%E8%B1%A1%E5%8F%AF%E4%BB%A5%E5%9B%9E%E6%94%B6"><span class="nav-number">1.</span> <span class="nav-text">如何判断对象可以回收</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%BC%95%E7%94%A8%E8%AE%A1%E6%95%B0%E6%B3%95"><span class="nav-number">1.1.</span> <span class="nav-text">引用计数法</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8F%AF%E8%BE%BE%E6%80%A7%E5%88%86%E6%9E%90"><span class="nav-number">1.2.</span> <span class="nav-text">可达性分析</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9B%9B%E7%A7%8D%E5%BC%95%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">四种引用</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%BA%E5%BC%95%E7%94%A8"><span class="nav-number">2.0.1.</span> <span class="nav-text">强引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%BD%AF%E5%BC%95%E7%94%A8"><span class="nav-number">2.0.2.</span> <span class="nav-text">软引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E5%BC%B1%E5%BC%95%E7%94%A8"><span class="nav-number">2.0.3.</span> <span class="nav-text">弱引用</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#%E8%99%9A%E5%BC%95%E7%94%A8"><span class="nav-number">2.0.4.</span> <span class="nav-text">虚引用</span></a></li></ol></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#GC%E5%88%86%E7%B1%BB"><span class="nav-number">3.</span> <span class="nav-text">GC分类</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E7%AE%97%E6%B3%95"><span class="nav-number">4.</span> <span class="nav-text">垃圾收集算法</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#HotSpot%E4%B8%BA%E4%BB%80%E4%B9%88%E8%A6%81%E5%B0%86%E5%A0%86%E5%88%86%E4%B8%BA%E6%96%B0%E7%94%9F%E4%BB%A3%E5%92%8C%E8%80%81%E5%B9%B4%E4%BB%A3%EF%BC%9F"><span class="nav-number">4.1.</span> <span class="nav-text">HotSpot为什么要将堆分为新生代和老年代？</span></a></li></ol></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%9E%83%E5%9C%BE%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">5.</span> <span class="nav-text">垃圾收集器</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Serial-%E6%94%B6%E9%9B%86%E5%99%A8-%E5%92%8C-Serial-Old-%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">5.1.</span> <span class="nav-text">Serial 收集器 和 Serial Old 收集器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#ParNew-%E6%94%B6%E9%9B%86%E5%99%A8-%E5%92%8C-Parallel-Old-%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">5.2.</span> <span class="nav-text">ParNew 收集器 和 Parallel Old 收集器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#Parallel-Scavenge-%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">5.3.</span> <span class="nav-text">Parallel Scavenge 收集器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#CMS%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">5.4.</span> <span class="nav-text">CMS收集器</span></a></li><li class="nav-item nav-level-2"><a class="nav-link" href="#G1%E6%94%B6%E9%9B%86%E5%99%A8"><span class="nav-number">5.5.</span> <span class="nav-text">G1收集器</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">23</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">5</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/05/01-58-38/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="JVM 垃圾回收 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          JVM 垃圾回收
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+      
+
+      <time title="Created: 2024-03-05 01:58:38 / Modified: 02:07:26" itemprop="dateCreated datePublished" datetime="2024-03-05T01:58:38+08:00">2024-03-05</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/" itemprop="url" rel="index"><span itemprop="name">Java</span></a>
+        </span>
+          , 
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Java/JVM/" itemprop="url" rel="index"><span itemprop="name">JVM</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本篇是JVM专栏的第四篇，将带你入门学习JVM中的垃圾回收机制，内容包含Java中的四种引种、多种类型的GC算法和垃圾回收器等。</p>
+<span id="more"></span>
+
+<h1 id="如何判断对象可以回收"><a href="#如何判断对象可以回收" class="headerlink" title="如何判断对象可以回收"></a>如何判断对象可以回收</h1><h2 id="引用计数法"><a href="#引用计数法" class="headerlink" title="引用计数法"></a>引用计数法</h2><p>给对象中添加一个引用计数器，每当有一个地方引用它，计数器就加 1；当引用失效，计数器就减 1；任何时候计数器为 0 的对象就是不可能再被使用的。</p>
+<p>可能存在的问题：对象之间相互循环引用<br><img src="/images/illustration/7c263468298748e5955c0b63b651a2cb.png" alt="在这里插入图片描述"></p>
+<h2 id="可达性分析"><a href="#可达性分析" class="headerlink" title="可达性分析"></a>可达性分析</h2><p>以GC Roots的对象为起点，从这些节点开始向下搜索，节点所走过的路径为引用链。不在引用链中的对象需要被回收。</p>
+<p><strong>哪些对象可以作为 GC Roots ？</strong></p>
+<ul>
+<li>虚拟机栈(栈帧中的本地变量表)中引用的对象</li>
+<li>本地方法栈(Native 方法)中引用的对象</li>
+<li>方法区中类静态属性引用的对象</li>
+<li>方法区中常量引用的对象</li>
+<li>所有被同步锁持有的对象</li>
+</ul>
+<p>&nbsp; </p>
+<h1 id="四种引用"><a href="#四种引用" class="headerlink" title="四种引用"></a>四种引用</h1><p>不论是引用计数法还是可达性分析，都与引用有关。</p>
+<h3 id="强引用"><a href="#强引用" class="headerlink" title="强引用"></a>强引用</h3><p>我们使用的大部分引用都是强引用。垃圾回收器宁愿抛出OutOfMemoryError也不会回收具有强引用的对象</p>
+<h3 id="软引用"><a href="#软引用" class="headerlink" title="软引用"></a>软引用</h3><p>如果说具有强引用的对象像生活中的必需品，那么只具有软引用的对象就像生活中可有可无的物品。垃圾回收器一般不会回收这一类对象。如果内存空间不足，就会回收这一些对象。软引用可以加速 JVM 对垃圾内存的回收速度，可以维护系统的运行安全，防止内存溢出（OutOfMemory）等问题的产生。</p>
+<h3 id="弱引用"><a href="#弱引用" class="headerlink" title="弱引用"></a>弱引用</h3><p>垃圾回收器线程在扫描内存区域过程中一旦发现只具有弱引用的对象，不管内存空间是否充足，都会回收它的内存。由于垃圾回收器是个优先级很低的线程，所以只具有弱引用的对象也不至于很快被发现。</p>
+<h3 id="虚引用"><a href="#虚引用" class="headerlink" title="虚引用"></a>虚引用</h3><p>虚引用又称为幽灵引用，它形同虚设，如果一个对象只具有虚引用，那么它在任何时候都可能被垃圾回收。<br>虚引用主要用来跟踪对象被垃圾回收的活动。程序可以通过判断引用队列中是否已经加入了虚引用，来了解被引用的对象是否将要被垃圾回收。程序如果发现某个虚引用已经被加入到引用队列，那么就可以在所引用的对象的内存被回收之前采取必要的行动。</p>
+<p>软引用和弱引用可以和引用队列联合使用，而虚引用必须和引用队列联合使用。这会使得当它们所引用的被垃圾回收时，JVM会把这些引用加入到与之关联的引用队列中。当调用引用队列的poll方法，就会依次输出存在于引用队列中的引用。</p>
+<p>&nbsp; </p>
+<h1 id="GC分类"><a href="#GC分类" class="headerlink" title="GC分类"></a>GC分类</h1><ul>
+<li>Young GC（Minor GC）：回收年轻代</li>
+<li>Old GC（Major GC）：回收老年代</li>
+<li>Full GC：对整个堆空间进行垃圾回收</li>
+</ul>
+<p>&nbsp; </p>
+<h1 id="垃圾收集算法"><a href="#垃圾收集算法" class="headerlink" title="垃圾收集算法"></a>垃圾收集算法</h1><ul>
+<li><strong>标记-清除算法</strong><br>将不打算垃圾回收的区域进行标记，然后设置为未标记的位置已被回收。这个方法会导致存在内存碎片。<img src="/images/illustration/aa2faf728a7b4d09b2388ade81d25262-20240305020051559.png" alt="在这里插入图片描述" style="zoom:50%;" /></li>
+<li><strong>标记-复制算法</strong><br>将不打算垃圾回收的区域复制到一个新的区域中，这样就不会有内存碎片，但是需要额外空间开销。<img src="/images/illustration/e965a0fa56764b11a4a16c37033dd37b.png" alt="在这里插入图片描述" style="zoom:50%;" /></li>
+<li><strong>标记-整理算法</strong><br>将不打算垃圾回收的区域标记，然后将没标记的区域清理后，对剩余的区域进行整理，不会有内存碎片产生，但是需要额外时间开销。<img src="/images/illustration/424423dcf5c84bc1bb709db9fc9cfffe.png" alt="在这里插入图片描述" style="zoom: 70%;" /></li>
+<li><strong>分代收集算法</strong><br>依据不同年代的特点选择合适的垃圾收集算法，垃圾收集算法一般从以上三个方法中挑选</li>
+</ul>
+<p>&nbsp; </p>
+<h2 id="HotSpot为什么要将堆分为新生代和老年代？"><a href="#HotSpot为什么要将堆分为新生代和老年代？" class="headerlink" title="HotSpot为什么要将堆分为新生代和老年代？"></a>HotSpot为什么要将堆分为新生代和老年代？</h2><p>答：将 java 堆分为新生代和老年代，这样我们就可以根据各个年代的特点选择合适的垃圾收集算法。<strong>比如在新生代中，每次收集都会有大量对象死去，所以可以选择”标记-复制“算法，只需要付出少量对象的复制成本就可以完成每次垃圾收集。而老年代的对象存活几率是比较高的，而且没有额外的空间对它进行分配担保，所以我们必须选择“标记-清除”或“标记-整理”算法进行垃圾收集。</strong>（摘自JavaGuide）<br>附上我自己的理解：如果不分代，我们每次都进行Full GC，性能会比较差。<br>&nbsp; </p>
+<h1 id="垃圾收集器"><a href="#垃圾收集器" class="headerlink" title="垃圾收集器"></a>垃圾收集器</h1><p>不同新生代的垃圾回收器可以和不同老年代的垃圾回收器自由组合</p>
+<h2 id="Serial-收集器-和-Serial-Old-收集器"><a href="#Serial-收集器-和-Serial-Old-收集器" class="headerlink" title="Serial 收集器 和 Serial Old 收集器"></a>Serial 收集器 和 Serial Old 收集器</h2><p>特点：单线程，且过程需要进行STW（Stop The World），简单高效，可以用在客户端模式下的虚拟机。<br>新生代使用标记-复制算法，老年代使用标记-整理算法。<br><img src="/images/illustration/b23bf26fe07a4847afce8a0fe9dddd2a.png" alt="在这里插入图片描述"></p>
+<h2 id="ParNew-收集器-和-Parallel-Old-收集器"><a href="#ParNew-收集器-和-Parallel-Old-收集器" class="headerlink" title="ParNew 收集器 和 Parallel Old 收集器"></a>ParNew 收集器 和 Parallel Old 收集器</h2><p>Serial收集器的多线程版本，除了使用多线程意以外与Serial收集器一致。ParNew收集器虽然使用多线程来并发进行垃圾收集，但是并没有与用户线程同时运行。过程需要进行STW（Stop The World）。<br>新生代使用标记-复制算法，老年代使用标记-整理算法。<br><img src="/images/illustration/31eb36fefbc348e3b66a7627d3ae37b8.png" alt="在这里插入图片描述"></p>
+<h2 id="Parallel-Scavenge-收集器"><a href="#Parallel-Scavenge-收集器" class="headerlink" title="Parallel Scavenge 收集器"></a>Parallel Scavenge 收集器</h2><p>Parallel Scavenge收集器的关注点是吞吐量，追求高吞吐量即追求高效率地利用CPU。让单位时间内，STW 的时间最短，0.2 + 0.2 &#x3D; 0.4，垃圾回收时间占比最低，这样就称吞吐量高。这是JDK8的默认收集器。过程需要进行STW（Stop The World）。<br>新生代使用标记-复制算法，老年代使用标记-整理算法。<br><img src="/images/illustration/a796d13006a948929644ca39ec242f57.png" alt="在这里插入图片描述"></p>
+<h2 id="CMS收集器"><a href="#CMS收集器" class="headerlink" title="CMS收集器"></a>CMS收集器</h2><p>CMS（Concurrent Mark Sweep）收集器是一种以获取最短回收停顿时间为目标的收集器。它非常符合在注重用户体验的应用上使用。尽可能让单次 STW 的时间最短 0.1 + 0.1 + 0.1 + 0.1 + 0.1 &#x3D; 0.5。CMS收集器是第一款真正意义上的并发收集器，它第一次让垃圾收集线程与用户线程同时工作。</p>
+<p>CMS工作过程分为四个阶段：</p>
+<ul>
+<li><strong>初始标记</strong>： 记录下<strong>直接与 root 相连</strong>的对象，<strong>需要STW（Stop The World）</strong>，速度很快。</li>
+<li><strong>并发标记</strong>： 同时开启 GC 和用户线程，<strong>记录可达对象</strong>。这个阶段结束时不能保证包含当前所有的可达对象。因为用户线程可能会不断的更新引用域，所以 GC 线程无法保证可达性分析的实时性。<strong>不需要STW</strong>。</li>
+<li><strong>重新标记</strong>： 修正并发标记期间因为用户程序继续运行而导致标记产生变动的那一部分对象的标记记录，<strong>需要STW</strong>，这个阶段的停顿时间一般会比初始标记阶段的时间稍长，远远比并发标记阶段时间短。</li>
+<li><strong>并发清除</strong>： 开启用户线程，同时 GC 线程开始对未标记的区域做清扫。<strong>不需要STW</strong>。</li>
+</ul>
+<p>总的来说，CMS中需要STW的阶段需要的时间都很短，所以用户体验较好。</p>
+<p>CMS在并发清除阶段使用的是<strong>标记-清除算法</strong>。因为CMS是进行并发清除，在清除过程中对标记的对象进行清理，而没标记的对象保持不动，这样才能与用户线程同时并发进行而不影响用户线程。</p>
+<p>这也导致CMS有三个明显的缺点：<br>1、无法处理<strong>浮动垃圾</strong>（在并发标记阶段产生了新垃圾）<br>2、垃圾收集结束后会有<strong>空间碎片</strong>（因为使用标记-清除算法）<br>3、对CPU <strong>资源敏感</strong>（并发时与用户线程抢占CPU）</p>
+<p><img src="/images/illustration/f19184a71a8d4356adeab3d8de0fdace.png" alt="在这里插入图片描述"></p>
+<h2 id="G1收集器"><a href="#G1收集器" class="headerlink" title="G1收集器"></a>G1收集器</h2><p>G1 - Garbage-First 名字的由来：<br><strong>G1收集器会在后台维护了一个优先列表，每次根据允许的收集时间，优先选择回收价值最大的 Region 。</strong> 这种使用 Region 划分内存空间以及有优先级的区域回收方式，保证了 G1 收集器在有限时间内可以尽可能高的收集效率（把内存化整为零）。</p>
+<p>G1的特点：<strong>整体上是标记-整理算法，两个区域之间是标记-复制算法</strong></p>
+<p>G1的内存结构：<strong>棋盘状</strong>，分为多个Region，Region的大小为1M~32M<br><strong>E为新生代Eden，S为幸存区Survive，O为老年代Old</strong><br><img src="/images/illustration/2ab4743eadf747bc9a8d769824383547.png" alt="在这里插入图片描述"><br>当声明的对象的大小为特殊情况时：<br>1、0.5倍Region &lt; 对象大小 &lt; 1倍Region，直接存储到O区且标记为H区<br>2、对象大小 &gt; 1倍Region，使用多个连续Region区来存储该对象且标记为H区</p>
+<p>G1中的一些概念：</p>
+<ul>
+<li><p>Rset（Remembered Set），存储在Region当中，记录引用了当前对象的其它Region对象。新生代和老年代都具有Rset，记录的都是哪些老年代对象引用了自己。Rset中记录了有老年代对象引用了自己的Region区在垃圾收集时不能被回收。<br>Rset本质是一种哈希表，key是本身Region的地址，value是引用了它的对象的卡页集合。<br><img src="/images/illustration/fb5e9c1eab48448387563a3ea2fe081b.png" alt="在这里插入图片描述"></p>
+</li>
+<li><p>卡表（Card Table），每个Region又被分成了若干个大小为512字节的Card，这些Card都会记录在全局卡表中。Card中的每个元素对应着其标识的内存区域中一块特定大小的内存块，这个内存块被称为卡页。一个卡页的内存中通常不止一个对象，只有卡页中有一个及以上对象的字段存在着跨Region引用，这个对应的元素的值就标识为1。<br>比如G1默认的Region有2048个，默认每个Region为2M，那每个Region对应的Card的每个元素对应的卡页的大小为2M &#x2F; 512&#x3D;4K，即这4K内存中只要有一个或一个以上的对象存在着跨Region对年轻代的引用，这个卡页对应的Card的元素值为1。<br>这样在Minor GC时，只需要将变脏的Region中的那个卡页加入GC Roots一并扫描即可。比起扫描老年代的所有对象，大大减少了扫描的数据量，提升了效率。(这一段引用自硬核子牙)</p>
+<img src="/images/illustration/ece5f8591a3a40edb0403d621db27012.png" alt="在这里插入图片描述" style="zoom: 67%;" /></li>
+</ul>
+<p><strong>Rset记录的是谁引用了我，卡表记录的是我引用了谁</strong></p>
+<ul>
+<li>Cset（Collection Set），回收集合，保存了本次GC需要清理的Region集合。</li>
+</ul>
+<p>G1垃圾回收阶段：<br><img src="/images/illustration/93f8e06a27c040d09b670e33936dca7d.png" alt="在这里插入图片描述" style="zoom:67%;" /><br>这三个阶段会循环进行</p>
+<ul>
+<li><strong>Young GC</strong>，<strong>年轻代的回收</strong>，将Eden和S(from)区中存活下来的对象复制到S(to)区，<strong>这时候会STW</strong>。当幸存区中的对象到达一定年龄时会晋升到老年代区中。在这个阶段中也会进行GCRoot的初始标记。<img src="/images/illustration/50933ebaa389497aa730ff6220f2cd7c.png" alt="在这里插入图片描述" style="zoom: 67%;" /></li>
+<li><strong>Concurrent Mark</strong>，<strong>并发标记</strong>，当堆中老年代占用堆空间达到一定比例（默认为45%）时会发生并发标记，这个阶段不会<strong>发生STW</strong>。</li>
+<li><strong>Mix GC</strong>，<strong>混合回收</strong>，会对E、S、O三个区域进行全面的垃圾回收。在这个阶段中对老年代对象的回收，会有选择地选出回收价值高（即能释放出更多空间）的对象进行回收。<strong>在这个阶段中有重新标记和并发清除</strong>，与CMS一致，且<strong>这两步骤会STW</strong>。<img src="/images/illustration/4974dd376d6e45aba64ebc35debb5e12.png" alt="在这里插入图片描述" style="zoom:67%;" /></li>
+</ul>
+<p>但是G1收集器在垃圾回收时的标记方面也可以分为以下阶段</p>
+<ul>
+<li><strong>初次标记</strong> &#x3D;&gt; 标记GCRoot对象所在的Region，称为RootRegion，<strong>会STW</strong></li>
+<li>使用上一步得到的RootRegion，遍历判断老年代区Region中的<strong>Rset</strong>中是否含有RootRegion中的对象（即有没有RootRegion中的对象引用了我），有的话会标识出这些老年代Region</li>
+<li><strong>并发标记</strong> &#x3D;&gt; 同CMS，但是遍历范围缩小，只需要遍历上面标识出来的老年代Region（因为没有被标记的老年代Region没有被GCRoot对象引用，将会被清除）</li>
+<li><strong>重新标记</strong> &#x3D;&gt; 同CMS，<strong>会STW</strong></li>
+<li><strong>并发清除</strong> &#x3D;&gt; 采用<strong>标记-复制</strong>的算法，<strong>会STW</strong></li>
+</ul>
+<hr>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://javaguide.cn/java/jvm/jvm-garbage-collection.html#%E5%86%99%E5%9C%A8%E5%89%8D%E9%9D%A2">JavaGuide中的一篇文章</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1yE411Z7AP?spm_id_from=333.999.header_right.fav_list.click">黑马程序员JVM教学视频</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/05/01-58-38/" title="JVM 垃圾回收">https://iamboger.github.io/2024/03/05/01-58-38/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/05/00-19-43/" rel="prev" title="JVM 内存结构">
+                  <i class="fa fa-angle-left"></i> JVM 内存结构
+                </a>
+            </div>
+            <div class="post-nav-item">
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
