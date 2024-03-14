@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width">
+<meta name="theme-color" content="#222"><meta name="generator" content="Hexo 6.3.0">
+
+  <link rel="apple-touch-icon" sizes="180x180" href="/images/apple-touch-icon-next.png">
+  <link rel="icon" type="image/png" sizes="32x32" href="/uploads/haqi.jpg">
+  <link rel="icon" type="image/png" sizes="16x16" href="/uploads/haqi.jpg">
+  <link rel="mask-icon" href="/images/logo.svg" color="#222">
+
+<link rel="stylesheet" href="/css/main.css">
+
+
+
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css" integrity="sha256-CTSx/A06dm1B063156EVh15m6Y67pAjZZaQc89LLSrU=" crossorigin="anonymous">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/animate.css/3.1.1/animate.min.css" integrity="sha256-PR7ttpcvz8qrF57fur/yAx1qXMFJeJFiA6pSzWi0OIE=" crossorigin="anonymous">
+
+<script class="next-config" data-name="main" type="application/json">{"hostname":"iamboger.github.io","root":"/","images":"/images","scheme":"Gemini","darkmode":false,"version":"8.18.2","exturl":false,"sidebar":{"position":"left","display":"post","padding":18,"offset":12},"copycode":{"enable":false,"style":null},"fold":{"enable":false,"height":500},"bookmark":{"enable":false,"color":"#222","save":"auto"},"mediumzoom":false,"lazyload":false,"pangu":false,"comments":{"style":"tabs","active":null,"storage":true,"lazyload":false,"nav":null},"stickytabs":false,"motion":{"enable":true,"async":false,"transition":{"menu_item":"fadeInDown","post_block":"fadeIn","post_header":"fadeInDown","post_body":"fadeInDown","coll_header":"fadeInLeft","sidebar":"fadeInUp"}},"prism":false,"i18n":{"placeholder":"Searching...","empty":"We didn't find any results for the search: ${query}","hits_time":"${hits} results found in ${time} ms","hits":"${hits} results found"}}</script><script src="/js/config.js"></script>
+
+    <meta name="description" content="本文讲述什么是协程以及协程与IO多路复用的配合。 什么是协程线程是进程中的执行体，拥有一个执行入口，以及从进程虚拟空间中分配的栈，包括用户栈和内核栈。操作系统会记录线程控制信息，而线程获得CPU时间片以后才可以执行，CPU这里栈指针、指令指针等寄存器都需要切换到对应的线程。">
+<meta property="og:type" content="article">
+<meta property="og:title" content="协程与IO多路复用">
+<meta property="og:url" content="https://iamboger.github.io/2024/03/12/19-51-24/index.html">
+<meta property="og:site_name" content="Boger&#39;s Blog">
+<meta property="og:description" content="本文讲述什么是协程以及协程与IO多路复用的配合。 什么是协程线程是进程中的执行体，拥有一个执行入口，以及从进程虚拟空间中分配的栈，包括用户栈和内核栈。操作系统会记录线程控制信息，而线程获得CPU时间片以后才可以执行，CPU这里栈指针、指令指针等寄存器都需要切换到对应的线程。">
+<meta property="og:locale" content="en_US">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312200057674.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312203231304.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312203354360.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312203528620.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312203629436.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312204812341.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312205700282.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312210726489.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312212503522.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312212845952.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312212950558.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312213406601.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312215405671.png">
+<meta property="og:image" content="https://iamboger.github.io/images/illustration/image-20240312215649630.png">
+<meta property="article:published_time" content="2024-03-12T11:51:24.000Z">
+<meta property="article:modified_time" content="2024-03-12T17:02:10.893Z">
+<meta property="article:author" content="Boger">
+<meta name="twitter:card" content="summary">
+<meta name="twitter:image" content="https://iamboger.github.io/images/illustration/image-20240312200057674.png">
+
+
+<link rel="canonical" href="https://iamboger.github.io/2024/03/12/19-51-24/">
+
+
+
+<script class="next-config" data-name="page" type="application/json">{"sidebar":"","isHome":false,"isPost":true,"lang":"en","comments":true,"permalink":"https://iamboger.github.io/2024/03/12/19-51-24/","path":"2024/03/12/19-51-24/","title":"协程与IO多路复用"}</script>
+
+<script class="next-config" data-name="calendar" type="application/json">""</script>
+<title>协程与IO多路复用 | Boger's Blog</title>
+  
+
+
+
+
+
+
+
+
+  <noscript>
+    <link rel="stylesheet" href="/css/noscript.css">
+  </noscript>
+</head>
+
+<body itemscope itemtype="http://schema.org/WebPage" class="use-motion">
+  <div class="headband"></div>
+
+  <main class="main">
+    <div class="column">
+      <header class="header" itemscope itemtype="http://schema.org/WPHeader"><div class="site-brand-container">
+  <div class="site-nav-toggle">
+    <div class="toggle" aria-label="Toggle navigation bar" role="button">
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+        <span class="toggle-line"></span>
+    </div>
+  </div>
+
+  <div class="site-meta">
+
+    <a href="/" class="brand" rel="start">
+      <i class="logo-line"></i>
+      <p class="site-title">Boger's Blog</p>
+      <i class="logo-line"></i>
+    </a>
+      <p class="site-subtitle" itemprop="description">Show me the code</p>
+  </div>
+
+  <div class="site-nav-right">
+    <div class="toggle popup-trigger" aria-label="Search" role="button">
+    </div>
+  </div>
+</div>
+
+
+
+<nav class="site-nav">
+  <ul class="main-menu menu"><li class="menu-item menu-item-home"><a href="/" rel="section"><i class="fa fa-home fa-fw"></i>Home</a></li><li class="menu-item menu-item-about"><a href="/about/" rel="section"><i class="fa fa-user fa-fw"></i>About</a></li><li class="menu-item menu-item-categories"><a href="/categories/" rel="section"><i class="fa fa-th fa-fw"></i>Categories</a></li>
+  </ul>
+</nav>
+
+
+
+
+</header>
+        
+  
+  <aside class="sidebar">
+
+    <div class="sidebar-inner sidebar-nav-active sidebar-toc-active">
+      <ul class="sidebar-nav">
+        <li class="sidebar-nav-toc">
+          Table of Contents
+        </li>
+        <li class="sidebar-nav-overview">
+          Overview
+        </li>
+      </ul>
+
+      <div class="sidebar-panel-container">
+        <!--noindex-->
+        <div class="post-toc-wrap sidebar-panel">
+            <div class="post-toc animated"><ol class="nav"><li class="nav-item nav-level-1"><a class="nav-link" href="#%E4%BB%80%E4%B9%88%E6%98%AF%E5%8D%8F%E7%A8%8B"><span class="nav-number">1.</span> <span class="nav-text">什么是协程</span></a></li><li class="nav-item nav-level-1"><a class="nav-link" href="#%E5%8D%8F%E7%A8%8B%E6%90%AD%E9%85%8DIO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8"><span class="nav-number">2.</span> <span class="nav-text">协程搭配IO多路复用</span></a><ol class="nav-child"><li class="nav-item nav-level-2"><a class="nav-link" href="#Linux%E4%B8%AD%E6%8F%90%E4%BE%9B%E7%9A%84%E4%B8%89%E7%A7%8DIO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E5%AE%9E%E7%8E%B0%E6%96%B9%E5%BC%8F"><span class="nav-number">2.1.</span> <span class="nav-text">Linux中提供的三种IO多路复用实现方式</span></a><ol class="nav-child"><li class="nav-item nav-level-3"><a class="nav-link" href="#select"><span class="nav-number">2.1.1.</span> <span class="nav-text">select</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#poll"><span class="nav-number">2.1.2.</span> <span class="nav-text">poll</span></a></li><li class="nav-item nav-level-3"><a class="nav-link" href="#epoll"><span class="nav-number">2.1.3.</span> <span class="nav-text">epoll</span></a></li></ol></li><li class="nav-item nav-level-2"><a class="nav-link" href="#%E5%8D%8F%E7%A8%8B%E4%B8%8EIO%E5%A4%9A%E8%B7%AF%E5%A4%8D%E7%94%A8%E7%9A%84%E5%90%88%E4%BD%9C%E6%96%B9%E5%BC%8F"><span class="nav-number">2.2.</span> <span class="nav-text">协程与IO多路复用的合作方式</span></a></li></ol></li></ol></div>
+        </div>
+        <!--/noindex-->
+
+        <div class="site-overview-wrap sidebar-panel">
+          <div class="site-author animated" itemprop="author" itemscope itemtype="http://schema.org/Person">
+    <img class="site-author-image" itemprop="image" alt="Boger"
+      src="/uploads/haqi.jpg">
+  <p class="site-author-name" itemprop="name">Boger</p>
+  <div class="site-description" itemprop="description">Hachiware is my Hero</div>
+</div>
+<div class="site-state-wrap animated">
+  <nav class="site-state">
+      <div class="site-state-item site-state-posts">
+        <a href="/archives/">
+          <span class="site-state-item-count">26</span>
+          <span class="site-state-item-name">posts</span>
+        </a>
+      </div>
+      <div class="site-state-item site-state-categories">
+          <a href="/categories/">
+        <span class="site-state-item-count">6</span>
+        <span class="site-state-item-name">categories</span></a>
+      </div>
+  </nav>
+</div>
+  <div class="links-of-author animated">
+      <span class="links-of-author-item">
+        <a href="mailto:1149646297@qq.com" title="E-Mail → mailto:1149646297@qq.com" rel="noopener me" target="_blank"><i class="fa fa-envelope fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://space.bilibili.com/106296671" title="Bilibili → https:&#x2F;&#x2F;space.bilibili.com&#x2F;106296671" rel="noopener me" target="_blank"><i class="fa custom bilibili fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" title="抖音 → https:&#x2F;&#x2F;www.douyin.com&#x2F;user&#x2F;MS4wLjABAAAABn1T7QZfUyMAw-EDO0xIEpOAjN7HO5sglwo0rCPYURLZurwdwPtomZ8SkNd2DePd" rel="noopener me" target="_blank"><i class="fa custom douyin fa-fw"></i></a>
+      </span>
+      <span class="links-of-author-item">
+        <a href="https://blog.csdn.net/QQ1149646297?type=blog" title="CSDN → https:&#x2F;&#x2F;blog.csdn.net&#x2F;QQ1149646297?type&#x3D;blog" rel="noopener me" target="_blank"><i class="fa custom csdn fa-fw"></i></a>
+      </span>
+  </div>
+  <div class="cc-license animated" itemprop="license">
+    <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" class="cc-opacity" rel="noopener" target="_blank"><img src="https://cdnjs.cloudflare.com/ajax/libs/creativecommons-vocabulary/2020.11.3/assets/license_badges/small/by_nc_sa.svg" alt="Creative Commons"></a>
+  </div>
+
+        </div>
+      </div>
+    </div>
+
+    
+  </aside>
+
+
+    </div>
+
+    <div class="main-inner post posts-expand">
+
+
+  
+
+
+<div class="post-block">
+  
+  
+
+  <article itemscope itemtype="http://schema.org/Article" class="post-content" lang="en">
+    <link itemprop="mainEntityOfPage" href="https://iamboger.github.io/2024/03/12/19-51-24/">
+
+    <span hidden itemprop="author" itemscope itemtype="http://schema.org/Person">
+      <meta itemprop="image" content="/uploads/haqi.jpg">
+      <meta itemprop="name" content="Boger">
+    </span>
+
+    <span hidden itemprop="publisher" itemscope itemtype="http://schema.org/Organization">
+      <meta itemprop="name" content="Boger's Blog">
+      <meta itemprop="description" content="Hachiware is my Hero">
+    </span>
+
+    <span hidden itemprop="post" itemscope itemtype="http://schema.org/CreativeWork">
+      <meta itemprop="name" content="协程与IO多路复用 | Boger's Blog">
+      <meta itemprop="description" content="">
+    </span>
+      <header class="post-header">
+        <h1 class="post-title" itemprop="name headline">
+          协程与IO多路复用
+        </h1>
+
+        <div class="post-meta-container">
+          <div class="post-meta">
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar"></i>
+      </span>
+      <span class="post-meta-item-text">Posted on</span>
+
+      <time title="Created: 2024-03-12 19:51:24" itemprop="dateCreated datePublished" datetime="2024-03-12T19:51:24+08:00">2024-03-12</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-calendar-check"></i>
+      </span>
+      <span class="post-meta-item-text">Edited on</span>
+      <time title="Modified: 2024-03-13 01:02:10" itemprop="dateModified" datetime="2024-03-13T01:02:10+08:00">2024-03-13</time>
+    </span>
+    <span class="post-meta-item">
+      <span class="post-meta-item-icon">
+        <i class="far fa-folder"></i>
+      </span>
+      <span class="post-meta-item-text">In</span>
+        <span itemprop="about" itemscope itemtype="http://schema.org/Thing">
+          <a href="/categories/Golang/" itemprop="url" rel="index"><span itemprop="name">Golang</span></a>
+        </span>
+    </span>
+
+  
+</div>
+
+        </div>
+      </header>
+
+    
+    
+    
+    <div class="post-body" itemprop="articleBody"><p>本文讲述什么是协程以及协程与IO多路复用的配合。</p>
+<h1 id="什么是协程"><a href="#什么是协程" class="headerlink" title="什么是协程"></a>什么是协程</h1><p>线程是进程中的执行体，拥有一个执行入口，以及从进程虚拟空间中分配的栈，包括用户栈和内核栈。操作系统会记录线程控制信息，而线程获得CPU时间片以后才可以执行，CPU这里栈指针、指令指针等寄存器都需要切换到对应的线程。</p>
+<img src="/images/illustration/image-20240312200057674.png" alt="image-20240312200057674" style="zoom: 33%;" />
+
+<span id="more"></span>
+
+<p>如果线程自己又创建几个执行体，给它们各自指定执行入口，申请一些内存分给他们做执行栈，那么线程就可以按需调度这几个执行体了。为了实现这些执行体的切换，线程也需要记录它们的控制信息，包括id、执行栈的位置、执行入口位置、执行现场等。（下图中T是线程，1、2、3是线程T创建的3个执行体）</p>
+<img src="/images/illustration/image-20240312203231304.png" alt="image-20240312203231304" style="zoom: 33%;" />
+
+
+
+<p>线程可以选择一个执行体来执行，此时CPU中指令指针就会指向这个执行体的执行入口，栈基和栈指针寄存器也会指向线程给它分配的执行栈。</p>
+<img src="/images/illustration/image-20240312203354360.png" alt="image-20240312203354360" style="zoom: 33%;" />
+
+<p>要切换执行体时，要先保存当前执行体的执行现场，然后切换到另一个执行体。</p>
+<img src="/images/illustration/image-20240312203528620.png" alt="image-20240312203528620" style="zoom: 33%;" />
+
+<p>同时，通过同样的方式，也可以恢复到之前的执行体。这样就可以从上次中断的地方继续执行。</p>
+<img src="/images/illustration/image-20240312203629436.png" alt="image-20240312203629436" style="zoom: 33%;" />
+
+<p>上述由线程创建的执行体就是所谓的“协程”。因为用户程序不能操作内核空间，所以只能给协程分配用户栈。而操作系统对协程一无所知，所以协程又被称为用户态线程。</p>
+<img src="/images/illustration/image-20240312204812341.png" alt="image-20240312204812341" style="zoom: 33%;" />
+
+<p>协程的思想很早就被提出，最初是为了解决编译器实现中的问题，后来相继出现了很多种实现方式，例如windows中的纤程，再例如lua中的coroutine。无论被赋予怎样的名字，有着怎样的用法，在创建协程时都需要指定协程执行体入口，底层都会分配协程执行栈和控制信息，以实现用户态调度。而让出执行权时，也都要为协程保存执行现场，以能够从中断处恢复执行。</p>
+<p>所以协程思想的关键在于控制流的“主动让出”和“恢复”，每个协程拥有自己的执行栈，可以保存自己的执行现场，所以可以由用户程序按需创建协程。协程“主动让出”执行权时，会保存执行现场，然后切换到其他协程。协程恢复执行时，会根据之前保存的执行现场，恢复到中断前的状态继续执行。这样就通过协程实现了既轻量又灵活的、由用户态进行调度的多任务模型。</p>
+<img src="/images/illustration/image-20240312205700282.png" alt="image-20240312205700282" style="zoom: 33%;" />
+
+<p>当协程刚开始被提出时，经历了一段少人问津的时间。直到在高并发场景下，多进程模型下内存资源捉襟见肘，多线程模型下内核态用户态的不断切换又会对性能产生影响，此时协程这种灵活、轻量的用户态调度模型受到了广泛关注。</p>
+<p>真正让协程大放异彩的，是其结合IO多路复用的应用，助力协程成为炙手可热的高并发解决方案。</p>
+<h1 id="协程搭配IO多路复用"><a href="#协程搭配IO多路复用" class="headerlink" title="协程搭配IO多路复用"></a>协程搭配IO多路复用</h1><p>通过操作系统记录的进程控制信息，可以找到”打开文件描述符表”。进程打开的文件、创建的socket等等，都会记录到这张表中。</p>
+<p>socket的所有操作都由操作系统来提供，也就是要通过系统调用来完成。每创建一个socket，就会在打开文件描述符表中，对应增加一条记录，而返回给应用程序的只有一个socket描述符，用于识别不同的socket。</p>
+<p>每个TCP socket在创建时，操作系统都会为它分配一个读缓冲区和一个写缓冲区，要获得响应数据，就要从读缓冲区拷贝过来，同样的要通过socket发送数据，也要先把数据拷贝到写缓冲区才行。</p>
+<img src="/images/illustration/image-20240312210726489.png" alt="image-20240312210726489" style="zoom: 33%;" />
+
+<p>问题在于，当用户程序想要读数据的时候，读缓冲区里未必有数据，想发送数据的时候，写缓冲区里也未必有空间。</p>
+<ul>
+<li>第一种办法，乖乖地让出CPU，进到等待队列里，等socket就绪后，再次获得时间片就可以继续执行了，这就是阻塞式IO。使用阻塞式IO，要处理一个socket就要占用一个线程。等这个socket处理完才能接手下一个，这在高并发场景下会加重调度开销。</li>
+<li>第二种办法是非阻塞式IO，也就是不让出CPU，但是需要频繁地检查socket是否就绪了。这是一种“忙等待”的方式，很难把握轮询的间隔时间，容易造成空耗CPU，加剧响应的延迟。</li>
+<li>第三种办法就是“IO多路复用”，由操作系统提供支持，把需要等待的socket加入到监听集合，这样就可以通过一次系统调用，同时监听多个socket。有socket就绪了，就可以逐个处理了，既不用为了等待某个socket而阻塞，也不会陷入“忙等待”之中</li>
+</ul>
+<h2 id="Linux中提供的三种IO多路复用实现方式"><a href="#Linux中提供的三种IO多路复用实现方式" class="headerlink" title="Linux中提供的三种IO多路复用实现方式"></a>Linux中提供的三种IO多路复用实现方式</h2><h3 id="select"><a href="#select" class="headerlink" title="select"></a>select</h3><p>第一种方法是select，我们可以设置要监听的描述符，也可以设置等待超时时间，如果有准备好的fd（File Descriptor 文件描述符），或达到指定超时时间，select函数就会返回。</p>
+<p>从函数签名来看，它支持监听可读、可写、异常三类事件。因为图里红圈中的fd_set是个unsigned long型的数组，共16个元素，每一位对应一个fd，16*64&#x3D;1024，最多可以监听1024个fd。这就有点少了，而且每次调用select都要传递所有监听集合，这就需要频繁的从用户态到内核态拷贝数据。</p>
+<p>除此之外，即便有fd就绪了，也需要遍历整个监听集合，来判断哪个fd是可操作的，这些都会影响性能。</p>
+<img src="/images/illustration/image-20240312212503522.png" alt="image-20240312212503522" style="zoom: 33%;" />
+
+<h3 id="poll"><a href="#poll" class="headerlink" title="poll"></a>poll</h3><p>第二种IO多路复用实现方法是poll。在poll方法中，虽然支持的fd数目等于最多可打开的文件描述符的个数，但是另外两个问题依然存在。</p>
+<img src="/images/illustration/image-20240312212845952.png" alt="image-20240312212845952" style="zoom:33%;" />
+
+<h3 id="epoll"><a href="#epoll" class="headerlink" title="epoll"></a>epoll</h3><p>而epoll就没有上述这些问题了，它提供三个接口：</p>
+<ul>
+<li><code>epoll_create1</code>用于创建一个epoll，并获取一个句柄</li>
+<li><code>epoll_ctl</code>用于添加，修改或删除fd与对应的事件信息，除了指定fd和要监听的事件类型，还可以传入一个event data，通常会按需定义一个数据结构，用于处理对应的fd。可以看到每次都只需传入要操作的一个fd，无需传入所有监听集合，而且只需要注册这一次</li>
+<li><code>epoll_wait</code>用于得到的fd集合都是已经就绪的，逐个处理即可，无需遍历所有监听集合</li>
+</ul>
+<img src="/images/illustration/image-20240312212950558.png" alt="image-20240312212950558" style="zoom: 33%;" />
+
+<h2 id="协程与IO多路复用的合作方式"><a href="#协程与IO多路复用的合作方式" class="headerlink" title="协程与IO多路复用的合作方式"></a>协程与IO多路复用的合作方式</h2><p>通过IO多路复用，线程再也不用为了等待某一个socket，而阻塞或空耗CPU。并发处理能力因而大幅提升，但是也并非没有问题，例如一个socket可读了，但是在本次读取中只读到了半条请求，也就是说需要再次等待这个socket可读。在继续处理下一个socket之前，需要记录下这个socket的处理状态，下一个这个socket可读时，也需要恢复上次保存的现场，才好继续处理。<br>也就是说，在IO多路复用中实现业务逻辑时，我们需要随着事件的等待和就绪而频繁地保存和恢复执行现场，这并不符合常规开发习惯，如果业务逻辑比较简单还好，若是较为复杂的业务场景，就是比较难办了。</p>
+<img src="/images/illustration/image-20240312213406601.png" alt="image-20240312213406601" style="zoom: 40%;" />
+
+<p>既然业务处理过程中，要等待事件时，需要保存现场并切换到下一个就绪的fd，而事件就绪时又需要恢复现场继续处理，这种场景下很适合使用协程来实现。</p>
+<p>在IO多路复用这里，事件循环依然存在，依然要在循环中逐个处理就绪的fd，但处理过程却不是围绕具体业务，而是面向协程调度。如果是用于监听端口的fd就绪了，就建立连接创建一个新的fd，交给一个协程来负责，协程执行入口就指向业务处理函数入口，业务处理过程中，需要等待时就注册IO事件，然后让出。</p>
+<p>这样执行权就会回到切换到该协程的地方继续执行。如果是其他等待IO事件的fd就绪了，只需要恢复关联的协程即可。</p>
+<p>协程拥有自己的栈，要保存和恢复现场都很容易实现。这样IO多路复用这一层的事件循环，就和具体业务逻辑解耦了。可以把read，write，connect等可能会发生等待的函数包装一下，在其中实现IO事件注册与主动让出，这样在业务逻辑层面就可以使用这些包装函数，按照常规的顺序编程方式，来实现业务逻辑了。</p>
+<p>这些包装函数在需要等待时，就会注册IO事件，然后让出协程。这样我们在实现业务逻辑时就完全不用关心保存和恢复现场的问题了。协程和IO多路复用之间的合作，不仅保留了IO多路复用的高并发性能，还解放了业务逻辑的实现。</p>
+<img src="/images/illustration/image-20240312215405671.png" alt="image-20240312215405671" style="zoom: 33%;" />
+
+<p>其实在Golang，OpenResty，Swoole中，协程和IO多路复用的合作方式，核心思想大抵如此。</p>
+<p>为了增强理解，<a target="_blank" rel="noopener" href="https://github.com/fengyoulin/ef">这个github项目</a>按照这个思路实现了一个精简版的实例，项目结构是这样的：</p>
+<ul>
+<li>最底层实现协程，定义了协程对应的数据结构，提供协程初始化与切换等核心功能。</li>
+<li>基于上述功能实现协程池，可以预创建一批协程备用，回收空闲协程复用，还可以根据请求情况缩减或扩张协程池规模，这样上层应用就不用关心协程的实现细节了。</li>
+<li>协程池之上是IO多路复用功能的实现，该项目已实现对下图中IO多路复用层里的方法的支持，对于学习理解相关概念而言足够了。</li>
+<li>再往上是框架层，封装了事件循环，实现了基于IO的协程调度，有了框架层的封装，我们只需要关注业务层面的具体实现就ok了。</li>
+</ul>
+<img src="/images/illustration/image-20240312215649630.png" alt="image-20240312215649630" style="zoom: 33%;" />
+
+<hr>
+<p>参考：</p>
+<ol>
+<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1b5411b7SD/?spm_id_from=333.788.recommend_more_video.0&vd_source=4cfb22a672199a350ccd4a7f52fbab3f">【协程第一话】协程到底是怎样的存在？_哔哩哔哩_bilibili</a></li>
+<li><a target="_blank" rel="noopener" href="https://www.bilibili.com/video/BV1a5411b7aZ/?spm_id_from=333.788.recommend_more_video.-1&vd_source=4cfb22a672199a350ccd4a7f52fbab3f">【协程第二话】协程和IO多路复用更配哦~_哔哩哔哩_bilibili</a></li>
+</ol>
+
+    </div>
+
+    
+    
+    
+
+    <footer class="post-footer">
+          
+
+<div class="post-copyright">
+<ul>
+  <li class="post-copyright-author">
+      <strong>Post author:  </strong>Boger
+  </li>
+  <li class="post-copyright-link">
+      <strong>Post link: </strong>
+      <a href="https://iamboger.github.io/2024/03/12/19-51-24/" title="协程与IO多路复用">https://iamboger.github.io/2024/03/12/19-51-24/</a>
+  </li>
+  <li class="post-copyright-license">
+      <strong>Copyright Notice:  </strong>All articles in this blog are licensed under <a href="https://creativecommons.org/licenses/by-nc-sa/4.0/" rel="noopener" target="_blank"><i class="fab fa-fw fa-creative-commons"></i>BY-NC-SA</a> unless stating additionally.
+  </li>
+</ul>
+</div>
+
+
+        
+
+          <div class="post-nav">
+            <div class="post-nav-item">
+                <a href="/2024/03/05/01-58-38/" rel="prev" title="JVM 垃圾回收">
+                  <i class="fa fa-angle-left"></i> JVM 垃圾回收
+                </a>
+            </div>
+            <div class="post-nav-item">
+                <a href="/2024/03/12/23-24-10/" rel="next" title="goroutine与GPM">
+                  goroutine与GPM <i class="fa fa-angle-right"></i>
+                </a>
+            </div>
+          </div>
+    </footer>
+  </article>
+</div>
+
+
+
+
+
+
+</div>
+  </main>
+
+  <footer class="footer">
+    <div class="footer-inner">
+
+  <div class="copyright">
+    &copy; 2023 – 
+    <span itemprop="copyrightYear">2024</span>
+    <span class="with-love">
+      <i class="fa fa-heart"></i>
+    </span>
+    <span class="author" itemprop="copyrightHolder">Boger</span>
+  </div>
+  <div class="powered-by">Powered by <a href="https://hexo.io/" rel="noopener" target="_blank">Hexo</a> & <a href="https://theme-next.js.org/" rel="noopener" target="_blank">NexT.Gemini</a>
+  </div>
+
+    </div>
+  </footer>
+
+  
+  <div class="back-to-top" role="button" aria-label="Back to top">
+    <i class="fa fa-arrow-up fa-lg"></i>
+    <span>0%</span>
+  </div>
+
+<noscript>
+  <div class="noscript-warning">Theme NexT works best with JavaScript enabled</div>
+</noscript>
+
+
+  
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/animejs/3.2.1/anime.min.js" integrity="sha256-XL2inqUJaslATFnHdJOi9GfQ60on8Wx1C2H8DYiN1xY=" crossorigin="anonymous"></script>
+<script src="/js/comments.js"></script><script src="/js/utils.js"></script><script src="/js/motion.js"></script><script src="/js/next-boot.js"></script>
+
+  
+
+
+
+
+
+
+  
+
+
+
+
+
+</body>
+</html>
